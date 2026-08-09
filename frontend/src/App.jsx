@@ -5,6 +5,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import IssueDetailPage from './pages/IssueDetailPage';
 import CreateIssuePage from './pages/CreateIssuePage';
 import EditIssuePage from './pages/EditIssuePage';
@@ -41,6 +42,7 @@ function App() {
                 <Route path="/home" element={<Navigate to="/" replace />} />
                 <Route path="/community" element={<HomePage />} />
                 <Route path="/auth" element={<AuthPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/issues/:id" element={<IssueDetailPage />} />
                 <Route path="/issues/:id/edit" element={<PrivateRoute><EditIssuePage /></PrivateRoute>} />
                 <Route path="/create" element={<PrivateRoute><CreateIssuePage /></PrivateRoute>} />

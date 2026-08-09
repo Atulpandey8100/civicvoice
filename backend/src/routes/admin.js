@@ -38,7 +38,7 @@ router.get('/stats', auth, async (req, res) => {
       { $group: { _id: '$category', count: { $sum: 1 }, avgPriority: { $avg: '$aiPriority' } } }
     ]);
 
-    const recentIssues = await Issue.find().sort('-createdAt').limit(5).populate('author', 'name email');
+    const recentIssues = await Issue.find().sort('-createdAt').limit(5).populate('author', 'firstName lastName name email');
 
     res.json({
       totalIssues,

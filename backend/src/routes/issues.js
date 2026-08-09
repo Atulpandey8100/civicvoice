@@ -45,8 +45,8 @@ const removeUploadedFiles = (files) => {
   }
 };
 
-const PUBLIC_AUTHOR = 'name role';
-const PUBLIC_COMMENT_USER = 'name role';
+const PUBLIC_AUTHOR = 'firstName lastName name role';
+const PUBLIC_COMMENT_USER = 'firstName lastName name role';
 
 const runAnalysis = (issue) => {
   analyzeIssue(issue)
