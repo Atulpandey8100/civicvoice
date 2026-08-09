@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, Layers } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, Layers, MapPin } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 import IssueCard from '../components/IssueCard';
+import IssueMap, { INDIA_BOUNDS } from '../components/IssueMap';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import { CATEGORIES, STATUSES } from '../utils/priority';
@@ -21,6 +22,7 @@ const STATUS_COLORS = {
 export default function DashboardPage() {
   const toast = useToast();
   const [stats, setStats] = useState(null);
+  const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const requestIdRef = useRef(0);
@@ -29,9 +31,13 @@ export default function DashboardPage() {
     const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
-      const { data } = await api.get('/issues/stats');
+      const [{ data: statsData }, { data: issuesData }] = await Promise.all([
+        api.get('/issues/stats'),
+        api.get('/issues?limit=100')
+      ]);
       if (requestId !== requestIdRef.current) return;
-      setStats(data);
+      setStats(statsData);
+      setIssues(issuesData.issues || []);
       setError('');
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
@@ -90,6 +96,19 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          <section className="mt-6" aria-label="Community map">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink">
+              <MapPin size={18} className="text-accent" aria-hidden="true" />
+              Community issues across India
+            </h2>
+            <IssueMap
+              issues={issues}
+              bounds={INDIA_BOUNDS}
+              height="460px"
+              className="w-full"
+            />
+          </section>
+
           <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             <div className="stat-card">
               <h3>{total}</h3>

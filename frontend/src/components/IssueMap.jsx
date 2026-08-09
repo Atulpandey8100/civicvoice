@@ -1,15 +1,44 @@
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import L from 'leaflet';
 import { Link } from 'react-router-dom';
 import { priorityColor } from '../utils/priority';
+
+export const INDIA_BOUNDS = [[6.5, 68.1], [37.1, 97.4]];
+
+const TILE_URLS = {
+  street: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+};
+
+const TILE_ATTRIBUTIONS = {
+  street: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  dark: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+};
 
 const LEVEL_DOT = {
   high: { bg: 'var(--priority-high)', label: 'Critical (8–10)' },
   mid: { bg: 'var(--priority-mid)', label: 'Medium (5–7)' },
   low: { bg: 'var(--priority-low)', label: 'Low (1–4)' }
 };
+
+function FitView({ bounds }) {
+  const map = useMap();
+  useEffect(() => {
+    if (bounds) map.fitBounds(bounds, { padding: [24, 24] });
+  }, [map, bounds]);
+  return null;
+}
+
+function FlyTo({ target }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!target) return;
+    map.flyTo(target.coords, target.zoom, { duration: 1.2 });
+  }, [target, map]);
+  return null;
+}
 
 const createIcon = (priority) => {
   const color = priorityColor(priority);
@@ -40,15 +69,16 @@ const clusterIcon = (cluster) => {
   });
 };
 
-export default function IssueMap({ issues, className = '', height = '100%' }) {
+export default function IssueMap({ issues, className = '', height = '100%', center, zoom, bounds, hideLegend = false, layer = 'street', target }) {
   const [userLocation, setUserLocation] = useState([20.5937, 78.9629]);
 
   useEffect(() => {
+    if (center) return;
     navigator.geolocation?.getCurrentPosition(
       (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
       () => {}
     );
-  }, []);
+  }, [center]);
 
   const validIssues = issues.filter((i) =>
     i.location?.coordinates?.length === 2 &&
@@ -63,16 +93,19 @@ export default function IssueMap({ issues, className = '', height = '100%' }) {
       aria-label="Map of community issues"
     >
       <MapContainer
-        center={userLocation}
-        zoom={12}
+        center={center || userLocation}
+        zoom={zoom ?? 12}
         scrollWheelZoom
         style={{ height, width: '100%' }}
         className="z-0"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          key={layer}
+          url={TILE_URLS[layer] || TILE_URLS.street}
+          attribution={TILE_ATTRIBUTIONS[layer] || TILE_ATTRIBUTIONS.street}
         />
+        {bounds && <FitView bounds={bounds} />}
+        <FlyTo target={target} />
         <MarkerClusterGroup
           iconCreateFunction={clusterIcon}
           showCoverageOnHover={false}
@@ -109,14 +142,16 @@ export default function IssueMap({ issues, className = '', height = '100%' }) {
         </MarkerClusterGroup>
       </MapContainer>
 
-      <div className="markercluster-legend right-3 top-3 flex flex-col gap-1.5" role="img" aria-label="Priority legend">
-        {Object.entries(LEVEL_DOT).map(([key, val]) => (
-          <span key={key} className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: val.bg }} aria-hidden="true" />
-            {val.label}
-          </span>
-        ))}
-      </div>
+      {!hideLegend && (
+        <div className="markercluster-legend right-3 top-3 flex flex-col gap-1.5" role="img" aria-label="Priority legend">
+          {Object.entries(LEVEL_DOT).map(([key, val]) => (
+            <span key={key} className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: val.bg }} aria-hidden="true" />
+              {val.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

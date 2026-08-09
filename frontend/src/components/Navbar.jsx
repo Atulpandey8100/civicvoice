@@ -171,12 +171,12 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-1 md:flex">
           <NavLink to="/" className={linkClass} end>Home</NavLink>
-          <NavLink to="/about" className={linkClass}>About</NavLink>
-          <NavLink to="/contact" className={linkClass}>Contact</NavLink>
+          <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+          <NavLink to="/about" className={linkClass}>About Us</NavLink>
+          <NavLink to="/report" className={linkClass}>Report an Issue</NavLink>
+          <NavLink to="/help" className={linkClass}>Help</NavLink>
           {user && (
-            <>
-              <NavLink to="/create" className={linkClass}>Report Issue</NavLink>
-              <NavLink to="/notifications" className={linkClass}>
+            <NavLink to="/notifications" className={linkClass}>
                 <span className="flex items-center gap-1.5">
                   Notifications
                   {unreadCount > 0 && (
@@ -186,7 +186,6 @@ export default function Navbar() {
                   )}
                 </span>
               </NavLink>
-            </>
           )}
         </div>
 
@@ -216,11 +215,12 @@ export default function Navbar() {
         <div id="mobile-nav" className="border-t border-line bg-surface px-4 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             <NavLink to="/" onClick={() => setMobileOpen(false)} className={linkClass} end>Home</NavLink>
-            <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About</NavLink>
-            <NavLink to="/contact" onClick={() => setMobileOpen(false)} className={linkClass}>Contact</NavLink>
+            <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={linkClass}>Dashboard</NavLink>
+            <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
+            <NavLink to="/report" onClick={() => setMobileOpen(false)} className={linkClass}>Report an Issue</NavLink>
+            <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
             {user && (
               <>
-                <NavLink to="/create" onClick={() => setMobileOpen(false)} className={linkClass}>Report Issue</NavLink>
                 <NavLink to="/notifications" onClick={() => setMobileOpen(false)} className={linkClass}>
                   <span className="flex items-center gap-1.5">
                     Notifications

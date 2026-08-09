@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import { Search, LocateFixed, Filter, Layers, MapPin, Plus } from 'lucide-react';
+import IssueMap, { INDIA_BOUNDS } from './IssueMap';
 import api from '../utils/api';
-import { priorityColor } from '../utils/priority';
-
-const DELHI_CENTER = [28.6139, 77.209];
 
 const CATEGORY_FILTERS = ['infrastructure', 'safety', 'environment', 'utilities', 'transportation', 'other'];
 const CATEGORY_LABELS = {
@@ -18,49 +14,11 @@ const CATEGORY_LABELS = {
   other: 'Other'
 };
 
-const makeIcon = (priority) => {
-  const color = priorityColor(priority);
-  const label = Number.isFinite(Number(priority)) ? priority : '?';
-  return L.divIcon({
-    className: 'custom-marker',
-    html: `<div style="
-      background: ${color};
-      width: 30px; height: 30px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      color: white; font-weight: 700; font-size: 13px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-      border: 3px solid rgba(255,255,255,0.95);
-    ">${label}</div>`,
-    iconSize: [30, 30],
-    iconAnchor: [15, 15]
-  });
-};
-
-function FlyTo({ target }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!target) return;
-    map.flyTo(target.coords, target.zoom, { duration: 1.2 });
-  }, [target, map]);
-  return null;
-}
-
-function FitIssues({ issues }) {
-  const map = useMap();
-  useEffect(() => {
-    if (!issues || issues.length === 0) return;
-    const bounds = L.latLngBounds(issues.map((i) => [i.lat, i.lng]));
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-  }, [issues, map]);
-  return null;
-}
-
 const controlClass =
   'flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-60';
 
 export default function LandingMap() {
-  const [layer, setLayer] = useState('dark');
+  const [layer, setLayer] = useState('street');
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,22 +38,7 @@ export default function LandingMap() {
       const params = new URLSearchParams({ page: '1', limit: '100', sort: '-voteCount' });
       const { data } = await api.get(`/issues?${params}`);
       if (requestId !== requestIdRef.current) return;
-      const real = (data.issues || []).filter(
-        (i) =>
-          i.location?.coordinates?.length === 2 &&
-          i.location.coordinates[0] !== 0 &&
-          i.location.coordinates[1] !== 0
-      ).map((i) => ({
-        _id: i._id,
-        title: i.title,
-        category: i.category,
-        status: i.status,
-        votes: i.voteCount,
-        priority: i.aiPriority,
-        lat: i.location.coordinates[1],
-        lng: i.location.coordinates[0]
-      }));
-      setIssues(real);
+      setIssues(data.issues || []);
       setError('');
     } catch {
       if (requestId !== requestIdRef.current) return;
@@ -159,56 +102,15 @@ export default function LandingMap() {
   };
 
   return (
-    <div className="landing-map relative h-[400px] overflow-hidden rounded-[20px] border border-white/10 bg-[#0b0f22] shadow-[0_24px_60px_rgba(0,0,0,0.45)] sm:h-[460px] lg:h-[540px]">
-      <MapContainer
-        center={DELHI_CENTER}
-        zoom={12}
-        scrollWheelZoom
-        style={{ height: '100%', width: '100%' }}
-        className="z-0"
-      >
-        <TileLayer
-          key={layer}
-          url={
-            layer === 'dark'
-              ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-          }
-          attribution={
-            layer === 'dark'
-              ? '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          }
-        />
-        <FlyTo target={flyTarget} />
-        <FitIssues issues={visibleIssues} />
-        {visibleIssues.map((issue) => (
-          <Marker key={issue._id} position={[issue.lat, issue.lng]} icon={makeIcon(issue.priority)}>
-            <Popup>
-              <div className="min-w-44" style={{ color: 'var(--ink)' }}>
-                <p className="mb-1 text-sm font-semibold">{issue.title}</p>
-                <p className="mb-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className={`badge badge-${issue.status}`}>{issue.status}</span>
-                  <span className="capitalize" style={{ color: 'var(--ink-soft)' }}>
-                    {CATEGORY_LABELS[issue.category] || issue.category}
-                  </span>
-                </p>
-                <p className="mb-2 flex items-center gap-1 text-xs" style={{ color: 'var(--ink-soft)' }}>
-                  <MapPin size={12} aria-hidden="true" />
-                  {issue.votes} votes · priority {issue.priority}/10
-                </p>
-                <Link
-                  to={`/issues/${issue._id}`}
-                  className="inline-block rounded-lg px-2.5 py-1 text-xs font-semibold text-white no-underline"
-                  style={{ background: 'var(--accent)' }}
-                >
-                  View Details →
-                </Link>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
+    <div className="relative">
+      <IssueMap
+        issues={visibleIssues}
+        bounds={INDIA_BOUNDS}
+        layer={layer}
+        target={flyTarget}
+        height="100%"
+        className="h-[400px] sm:h-[460px] lg:h-[540px]"
+      />
 
       {loading && (
         <div className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center">
@@ -303,7 +205,7 @@ export default function LandingMap() {
           type="button"
           onClick={() => setLayer((l) => (l === 'street' ? 'dark' : 'street'))}
           aria-label={`Switch to ${layer === 'street' ? 'dark' : 'street'} map layer`}
-          aria-pressed={layer === 'dark'}
+          aria-pressed={layer === 'street'}
           className={controlClass}
         >
           <Layers size={15} aria-hidden="true" />

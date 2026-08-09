@@ -20,6 +20,7 @@ import AboutPage from './pages/AboutPage';
 import HowItWorksPage from './pages/HowItWorksPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ContactPage from './pages/ContactPage';
+import HelpPage from './pages/HelpPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingPage from './pages/LandingPage';
 
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/how-it-works" element={<HowItWorksPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/contact" element={<ContactPage />} />
+                <Route path="/help" element={<HelpPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </main>

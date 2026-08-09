@@ -2,17 +2,15 @@ import { Link, NavLink } from 'react-router-dom';
 import { Landmark } from 'lucide-react';
 
 const PLATFORM_LINKS = [
-  { to: '/report', label: 'Report an Issue' },
   { to: '/issues', label: 'Explore Issues' },
-  { to: '/map', label: 'Community Map' },
-  { to: '/dashboard', label: 'Dashboard' }
+  { to: '/map', label: 'Community Map' }
 ];
 
 const COMMUNITY_LINKS = [
-  { to: '/about', label: 'About CivicVoice' },
+  { to: '/about', label: 'About Us' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/privacy', label: 'Privacy' },
-  { to: '/contact', label: 'Contact' }
+  { to: '/contact', label: 'Contact Us' }
 ];
 
 const linkClass = ({ isActive }) =>
