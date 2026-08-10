@@ -23,6 +23,13 @@ export default function HomePage() {
 
   const PAGE_SIZE = 20;
   const requestIdRef = useRef(0);
+  const latestIssueIdRef = useRef(null); // sabse upar wale issue ki id track karta hai
+  const filterRef = useRef(filter); // polling ke andar latest filter use karne ke liye
+  const knownIdsRef = useRef(new Set()); // duplicate check ke liye
+
+  useEffect(() => {
+    filterRef.current = filter;
+  }, [filter]);
 
   const fetchIssues = useCallback(async (targetPage = 1) => {
     const requestId = ++requestIdRef.current;
@@ -36,8 +43,17 @@ export default function HomePage() {
       params.set('limit', PAGE_SIZE);
       const { data } = await api.get(`/issues?${params}`);
       if (requestId !== requestIdRef.current) return false;
+
       setTotal(data.total || 0);
-      setIssues((prev) => (targetPage === 1 ? (data.issues || []) : [...prev, ...(data.issues || [])]));
+      setIssues((prev) => {
+        const next = targetPage === 1 ? (data.issues || []) : [...prev, ...(data.issues || [])];
+        knownIdsRef.current = new Set(next.map((i) => i._id));
+        return next;
+      });
+
+      if (data.issues?.[0]) {
+        latestIssueIdRef.current = data.issues[0]._id;
+      }
       setError('');
       return true;
     } catch (err) {
@@ -49,10 +65,54 @@ export default function HomePage() {
     }
   }, [filter]);
 
+  // 👇 Background check — sirf tab naye issues ko live list mein daalega jab default sort/filter ho
+  const checkForNewIssues = useCallback(async () => {
+    // Sirf default view (no filter, default sort) pe hi auto-insert karo,
+    // custom filter/sort mein karne se list ka order confuse ho sakta hai.
+    if (filterRef.current.category || filterRef.current.status || filterRef.current.sort !== '-voteCount') {
+      return;
+    }
+
+    try {
+      const { data } = await api.get(`/issues?sort=-createdAt&page=1&limit=5`);
+      const fresh = (data.issues || []).filter((i) => !knownIdsRef.current.has(i._id));
+
+      if (fresh.length > 0) {
+        setIssues((prev) => {
+          const merged = [...fresh, ...prev];
+          knownIdsRef.current = new Set(merged.map((i) => i._id));
+          return merged;
+        });
+        setTotal((t) => t + fresh.length);
+        latestIssueIdRef.current = fresh[0]._id;
+      }
+    } catch {
+      // silent fail — background poll ke error se user ko disturb mat karo
+    }
+  }, []);
+
   useEffect(() => {
     setPage(1);
     fetchIssues(1);
   }, [fetchIssues]);
+
+  // Apna khud ka post turant refresh kare (same tab, instant)
+  useEffect(() => {
+    const handler = () => {
+      setPage(1);
+      fetchIssues(1);
+    };
+    window.addEventListener('civicvoice:issue-created', handler);
+    return () => window.removeEventListener('civicvoice:issue-created', handler);
+  }, [fetchIssues]);
+
+  // Dusre users ke posts ke liye background polling
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkForNewIssues();
+    }, 8000); // har 8 second check karega
+    return () => clearInterval(interval);
+  }, [checkForNewIssues]);
 
   const handleLoadMore = async () => {
     if (loadingMore) return;

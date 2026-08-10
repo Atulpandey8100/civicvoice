@@ -27,17 +27,17 @@ export default function CreateIssuePage() {
     return () => urls.forEach((u) => URL.revokeObjectURL(u));
   }, []);
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.files);
-    if (files.length + images.length > 5) {
-      toast({ variant: 'error', title: 'Too many images', description: 'Maximum 5 images allowed.' });
-      return;
-    }
-    const newUrls = files.map((f) => URL.createObjectURL(f));
-    newUrls.forEach((u) => previewUrlsRef.current.add(u));
-    setImages((prev) => [...prev, ...files]);
-    setPreviews((prev) => [...prev, ...newUrls]);
-  };
+const handleImageChange = (e) => {
+  const files = Array.from(e.target.files);   // ✅ sahi
+  if (files.length + images.length > 5) {
+    toast({ variant: 'error', title: 'Too many images', description: 'Maximum 5 images allowed.' });
+    return;
+  }
+  const newUrls = files.map((f) => URL.createObjectURL(f));
+  newUrls.forEach((u) => previewUrlsRef.current.add(u));
+  setImages((prev) => [...prev, ...files]);
+  setPreviews((prev) => [...prev, ...newUrls]);
+};
 
   const removeImage = (index) => {
     setImages((prev) => prev.filter((_, i) => i !== index));

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Landmark, Bell, Menu, X, Sun, Moon, Monitor, LogOut, User, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Landmark, Bell, Menu, X, Sun, Moon, Monitor, LogOut, User, ShieldCheck, ChevronDown, Info, HelpCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../utils/api';
@@ -116,6 +116,12 @@ function UserMenu() {
           <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
             <User size={15} aria-hidden="true" /> My Profile
           </Link>
+          <Link to="/about" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
+            <Info size={15} aria-hidden="true" /> About Us
+          </Link>
+          <Link to="/help" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
+            <HelpCircle size={15} aria-hidden="true" /> Help
+          </Link>
           {user.role === 'admin' && (
             <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
               <ShieldCheck size={15} aria-hidden="true" /> Admin Dashboard
@@ -158,7 +164,7 @@ export default function Navbar() {
     }`;
 
   return (
-    <header className="sticky top-0 z-[1500] border-b border-line bg-surface/85 backdrop-blur-md">
+    <header className="sticky top-0 z-[1500] hidden border-b border-line bg-surface/85 backdrop-blur-md md:block">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6" aria-label="Main navigation">
         <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-white shadow-card">
@@ -171,10 +177,15 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-1 md:flex">
           <NavLink to="/" className={linkClass} end>Home</NavLink>
-          <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
-          <NavLink to="/about" className={linkClass}>About Us</NavLink>
+          {user ? (
+            <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+          ) : (
+            <>
+              <NavLink to="/about" className={linkClass}>About Us</NavLink>
+              <NavLink to="/help" className={linkClass}>Help</NavLink>
+            </>
+          )}
           <NavLink to="/report" className={linkClass}>Report an Issue</NavLink>
-          <NavLink to="/help" className={linkClass}>Help</NavLink>
           {user && (
             <NavLink to="/notifications" className={linkClass}>
                 <span className="flex items-center gap-1.5">
@@ -215,10 +226,15 @@ export default function Navbar() {
         <div id="mobile-nav" className="border-t border-line bg-surface px-4 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             <NavLink to="/" onClick={() => setMobileOpen(false)} className={linkClass} end>Home</NavLink>
-            <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={linkClass}>Dashboard</NavLink>
-            <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
+            {user ? (
+              <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={linkClass}>Dashboard</NavLink>
+            ) : (
+              <>
+                <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
+                <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
+              </>
+            )}
             <NavLink to="/report" onClick={() => setMobileOpen(false)} className={linkClass}>Report an Issue</NavLink>
-            <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
             {user && (
               <>
                 <NavLink to="/notifications" onClick={() => setMobileOpen(false)} className={linkClass}>
@@ -232,6 +248,8 @@ export default function Navbar() {
                   </span>
                 </NavLink>
                 <NavLink to="/profile" onClick={() => setMobileOpen(false)} className={linkClass}>My Profile</NavLink>
+                <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
+                <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
               </>
             )}
             {!user && (

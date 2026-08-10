@@ -1,17 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, ThumbsUp, Sparkles } from 'lucide-react';
+import { ThumbsUp, Sparkles, ImageOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import PriorityBar from './PriorityBar';
 import { priorityLabel, priorityColor } from '../utils/priority';
 
 export default function IssueCard({ issue, onVote }) {
   const { user } = useAuth();
   const [animating, setAnimating] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
 
   const hasVoted = issue.votes?.includes(user?.id);
   const color = priorityColor(issue.aiPriority);
-  const hasCoords = issue.location?.coordinates?.length === 2 && issue.location.coordinates[0] !== 0 && issue.location.coordinates[1] !== 0;
+  const hasImages = issue.images?.length > 0;
 
   const handleVote = () => {
     if (!user || animating) return;
@@ -21,69 +21,105 @@ export default function IssueCard({ issue, onVote }) {
   };
 
   return (
-    <article className="card card-hover p-5">
-      <div className="mb-2.5 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link to={`/issues/${issue._id}`} className="group">
-            <h3 className="font-display text-base font-semibold leading-snug text-ink transition-colors group-hover:text-accent">
-              {issue.title}
-            </h3>
-          </Link>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
-            <span className="rounded-full bg-surface-3 px-2.5 py-0.5 font-medium capitalize text-ink-soft">
-              {issue.category}
-            </span>
-            <span>by {issue.author?.name || 'Anonymous'}</span>
-            <span aria-hidden="true">·</span>
-            <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+    <article className="card card-hover overflow-hidden">
+      {/* Hero image */}
+      <div className="relative h-56 w-full bg-surface-3">
+        {hasImages ? (
+          <img
+            src={issue.images[activeImg]}
+            alt={issue.title}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 text-ink-faint">
+            <ImageOff size={22} aria-hidden="true" />
+            <span className="text-xs">No photo</span>
           </div>
-        </div>
-        <span className={`badge badge-${issue.status}`}>{issue.status}</span>
-      </div>
+        )}
 
-      <p className="line-clamp-2 text-sm leading-relaxed text-ink-soft">
-        {issue.description}
-      </p>
-
-      {hasCoords && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-faint">
-          <MapPin size={12} aria-hidden="true" />
-          {issue.location.address || `${issue.location.coordinates[1].toFixed(4)}, ${issue.location.coordinates[0].toFixed(4)}`}
-        </p>
-      )}
-
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className="font-medium text-ink-soft">AI Priority</span>
-          <span className="font-semibold" style={{ color }}>
-            {priorityLabel(issue.aiPriority)} · {issue.aiPriority}/10
+        {/* Tags overlay - top left */}
+        <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium capitalize text-white backdrop-blur-sm">
+            {issue.category}
+          </span>
+          <span className={`rounded-full bg-black/55 px-2.5 py-1 text-xs font-medium capitalize text-white backdrop-blur-sm badge-${issue.status}`}>
+            {issue.status}
           </span>
         </div>
-        <PriorityBar score={issue.aiPriority} size="sm" showLabel={false} />
+
+        {/* Priority badge - top right */}
+        <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
+          <span style={{ color }}>●</span>
+          {issue.aiPriority}/10
+        </div>
+
+        {/* Carousel dots - bottom center */}
+        {hasImages && issue.images.length > 1 && (
+          <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+            {issue.images.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={(e) => { e.preventDefault(); setActiveImg(i); }}
+                aria-label={`Show photo ${i + 1}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === activeImg ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
+                }`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={handleVote}
-          disabled={!user}
-          aria-label={hasVoted ? 'Remove your vote' : 'Vote for this issue'}
-          aria-pressed={hasVoted}
-          className={`vote-btn ${hasVoted ? 'voted' : ''} ${animating ? 'animate-pop-in' : ''}`}
-        >
-          <ThumbsUp size={14} fill={hasVoted ? 'currentColor' : 'none'} aria-hidden="true" />
-          {issue.voteCount} {issue.voteCount === 1 ? 'vote' : 'votes'}
-        </button>
+      {/* Content */}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <Link to={`/issues/${issue._id}`} className="group">
+              <h3 className="font-display text-base font-semibold leading-snug text-ink transition-colors group-hover:text-accent">
+                {issue.title}
+              </h3>
+            </Link>
+            <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft">
+              <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
+              <span aria-hidden="true">·</span>
+              <span>by {issue.author?.name || 'Anonymous'}</span>
+            </p>
+          </div>
+        </div>
 
-        {issue.aiSuggestions?.length > 0 && (
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-soft">
+          {issue.description}
+        </p>
+
+        <div className="mt-4 flex items-center justify-between">
+          <button
+            type="button"
+            onClick={handleVote}
+            disabled={!user}
+            aria-label={hasVoted ? 'Remove your vote' : 'Vote for this issue'}
+            aria-pressed={hasVoted}
+            className={`vote-btn ${hasVoted ? 'voted' : ''} ${animating ? 'animate-pop-in' : ''}`}
+          >
+            <ThumbsUp size={14} fill={hasVoted ? 'currentColor' : 'none'} aria-hidden="true" />
+            {issue.voteCount} {issue.voteCount === 1 ? 'vote' : 'votes'}
+          </button>
+
           <Link
             to={`/issues/${issue._id}`}
-            className="flex items-center gap-1.5 text-xs font-medium text-ink-faint transition-colors hover:text-accent"
+            className="flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-blue-500 transition-transform hover:scale-105"
           >
-            <Sparkles size={13} aria-hidden="true" />
-            {issue.aiSuggestions.length} AI {issue.aiSuggestions.length === 1 ? 'solution' : 'solutions'}
+            {issue.aiSuggestions?.length > 0 ? (
+              <>
+                <Sparkles size={12} aria-hidden="true" />
+                View
+              </>
+            ) : (
+              'View →'
+            )}
           </Link>
-        )}
+        </div>
       </div>
     </article>
   );
