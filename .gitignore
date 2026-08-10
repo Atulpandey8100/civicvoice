@@ -6,3 +6,5 @@ uploads/*
 *.log
 *.log.*
 function.md
+
+.env.local
