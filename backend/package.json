@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
+    "dev": "node --watch server.js",
+    "start": "node server.js",
     "seed:admin": "node scripts/seedAdmin.js"
   },
   "dependencies": {

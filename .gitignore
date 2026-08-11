@@ -1,8 +1,8 @@
 node_modules/
 dist/
 .env
-uploads/*
-!uploads/.gitkeep
+**/uploads/*
+!**/uploads/.gitkeep
 *.log
 *.log.*
 function.md

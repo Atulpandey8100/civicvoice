@@ -9,12 +9,13 @@ import Notification from "../models/Notification.js";
 import { auth } from "../middleware/auth.js";
 import { analyzeIssue } from "../utils/gemini.js";
 import { validate } from "../utils/validate.js";
-import imagekit from "../utils/imagekit.js";
+import { saveUpload, removeStoredImages, imageFileFilter } from "../utils/uploads.js";
 
 const router = express.Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
+  fileFilter: imageFileFilter,
   limits: {
     files: 5,
     fileSize: 5 * 1024 * 1024,
@@ -59,18 +60,17 @@ const validId = (id) => mongoose.isValidObjectId(id);
 const PUBLIC_AUTHOR = "firstName lastName name role";
 const PUBLIC_COMMENT_USER = "firstName lastName name role";
 
-const uploadToImageKit = async (file) => {
-  const response = await imagekit.upload({
-    file: file.buffer,
-    fileName: `${Date.now()}-${file.originalname}`,
-    folder: "/civicvoice-uploads",
-  });
-
-  return response.url;
-};
-
-const uploadImagesToImageKit = async (files = []) => {
-  return Promise.all(files.map(uploadToImageKit));
+const uploadImages = async (files = []) => {
+  const urls = [];
+  for (const file of files) {
+    try {
+      urls.push(await saveUpload(file));
+    } catch (err) {
+      await removeStoredImages(urls);
+      throw err;
+    }
+  }
+  return urls;
 };
 
 const runAnalysis = (issue) => {
@@ -307,6 +307,8 @@ router.post(
   ],
   validate,
   async (req, res) => {
+    let uploadedImages = [];
+
     try {
       const { title, description, category } = req.body;
 
@@ -318,8 +320,8 @@ router.post(
         });
       }
 
-      const images = req.files?.length
-        ? await uploadImagesToImageKit(req.files)
+      uploadedImages = req.files?.length
+        ? await uploadImages(req.files)
         : [];
 
       const issue = new Issue({
@@ -327,7 +329,7 @@ router.post(
         description,
         category: category || "other",
         location: parsedLocation,
-        images,
+        images: uploadedImages,
         author: req.userId,
       });
 
@@ -338,6 +340,7 @@ router.post(
 
       runAnalysis(issue);
     } catch (err) {
+      await removeStoredImages(uploadedImages);
       res.status(400).json({
         error: err.message,
       });
@@ -368,6 +371,8 @@ router.put(
   ],
   validate,
   async (req, res) => {
+    let uploadedNewImages = [];
+
     try {
       if (!validId(req.params.id)) {
         return res.status(400).json({
@@ -426,11 +431,15 @@ router.put(
       }
 
       if (req.files?.length) {
-        const newImages = await uploadImagesToImageKit(req.files);
+        uploadedNewImages = await uploadImages(req.files);
 
-        const existingImages = issue.images || [];
+        const combined = [...(issue.images || []), ...uploadedNewImages];
 
-        allowedUpdates.images = [...existingImages, ...newImages].slice(0, 5);
+        allowedUpdates.images = combined.slice(0, 5);
+
+        if (combined.length > 5) {
+          await removeStoredImages(combined.slice(5));
+        }
       }
 
       Object.assign(issue, allowedUpdates);
@@ -459,6 +468,7 @@ router.put(
 
       res.json(issue);
     } catch (err) {
+      await removeStoredImages(uploadedNewImages);
       res.status(400).json({
         error: err.message,
       });
@@ -604,6 +614,7 @@ router.delete("/:id", auth, async (req, res) => {
       });
     }
 
+    await removeStoredImages(issue.images);
     await Issue.findByIdAndDelete(req.params.id);
 
     res.json({
