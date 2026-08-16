@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Landmark, AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, MailCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { INDIAN_STATES, districtsOf } from '../data/india';
+import SplashScreen from '../components/SplashScreen';
+import Logo from '../components/Logo';
+import api from '../utils/api';
 
 const EMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/i;
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
@@ -13,6 +16,7 @@ const INITIAL_FORM = {
   lastName: '',
   mobile: '',
   email: '',
+  otp: '',
   password: '',
   confirmPassword: '',
   state: '',
@@ -30,7 +34,11 @@ export default function AuthPage() {
   const [form, setForm] = useState(INITIAL_FORM);
   const [errors, setErrors] = useState({});
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [splash, setSplash] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -60,11 +68,37 @@ export default function AuthPage() {
     if (!form.confirmPassword) next.confirmPassword = 'Please confirm your password';
     else if (form.confirmPassword !== form.password) next.confirmPassword = 'Passwords do not match';
 
+    if (!form.otp) next.otp = 'Enter the OTP sent to your email';
+    else if (!/^\d{6}$/.test(form.otp)) next.otp = 'Enter the 6-digit OTP';
+
     if (!form.state) next.state = 'Please select your state';
     if (!form.district) next.district = 'Please select your district';
 
     if (!form.consent) next.consent = 'You must accept the consent before registering';
     return next;
+  };
+
+  const sendOtp = async () => {
+    const next = {};
+    if (!form.email.trim()) next.email = 'Email is required';
+    else if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = 'Enter a valid email address';
+    else if (!EMAIL_REGEX.test(form.email)) next.email = 'Email must end with @gmail.com';
+    setErrors(next);
+    if (Object.keys(next).length > 0) {
+      setError('Please fix the highlighted fields before requesting an OTP.');
+      return;
+    }
+    setError('');
+    setInfo('');
+    setSendingOtp(true);
+    try {
+      await api.post('/auth/send-register-otp', { email: form.email.trim() });
+      setOtpSent(true);
+      setInfo('OTP sent to your email. Enter it below to create your account.');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not send OTP. Please try again.');
+    }
+    setSendingOtp(false);
   };
 
   const handleSubmit = async (e) => {
@@ -85,6 +119,7 @@ export default function AuthPage() {
           lastName: form.lastName.trim(),
           mobile: form.mobile.trim(),
           email: form.email.trim(),
+          otp: form.otp.trim(),
           password: form.password,
           confirmPassword: form.confirmPassword,
           state: form.state,
@@ -92,27 +127,32 @@ export default function AuthPage() {
           consent: form.consent
         });
       }
-      navigate('/community');
+      setSplash(true);
+      setTimeout(() => navigate('/'), 3000);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const handleSwitch = (mode) => {
     setIsLogin(mode);
     setError('');
     setErrors({});
+    setInfo('');
+    setOtpSent(false);
   };
 
   const districts = form.state ? districtsOf(form.state) : [];
 
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10">
+    <>
+      {splash && <SplashScreen />}
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
-          <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-white shadow-card">
-            <Landmark size={24} aria-hidden="true" />
+          <span className="mx-auto mb-3 block w-14">
+            <Logo size={56} />
           </span>
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
             Welcome to Civic<span className="text-accent">Voice</span>
@@ -200,16 +240,52 @@ export default function AuthPage() {
                   </div>
                   <div className="form-group">
                     <label htmlFor="email">Email</label>
-                    <input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      value={form.email}
-                      onChange={setField('email')}
-                      placeholder="you@gmail.com"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        value={form.email}
+                        onChange={setField('email')}
+                        placeholder="you@gmail.com"
+                        className="min-w-0 flex-1"
+                      />
+                      <button
+                        type="button"
+                        onClick={sendOtp}
+                        disabled={sendingOtp || otpSent}
+                        className="btn btn-secondary shrink-0 !px-3"
+                      >
+                        {sendingOtp ? 'Sending…' : otpSent ? 'OTP Sent' : 'Send OTP'}
+                      </button>
+                    </div>
                     <FieldError message={errors.email} />
                   </div>
+                </div>
+
+                {otpSent && (
+                  <p role="status" className="flex items-start gap-1.5 rounded-xl bg-accent-soft px-3.5 py-2.5 text-xs leading-relaxed text-ink-soft">
+                    <MailCheck size={13} className="mt-0.5 shrink-0 text-accent" aria-hidden="true" />
+                    An OTP was sent to <strong className="text-ink">{form.email}</strong>. Enter it below to verify your email.
+                  </p>
+                )}
+
+                <div className="form-group">
+                  <label htmlFor="otp">Email OTP</label>
+                  <input
+                    id="otp"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    value={form.otp}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, otp: e.target.value.replace(/\D/g, '') }));
+                      setErrors((prev) => ({ ...prev, otp: undefined }));
+                    }}
+                    placeholder="6-digit OTP"
+                  />
+                  <FieldError message={errors.otp} />
                 </div>
 
                 <div className="form-group">
@@ -330,6 +406,7 @@ export default function AuthPage() {
           Back to home
         </Link>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

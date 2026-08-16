@@ -1,14 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
-import { ArrowLeft, MapPin, ThumbsUp, Sparkles, Trash2, Pencil, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MapPin, ThumbsUp, Sparkles, Trash2, Pencil, MessageSquare, ImagePlus, X, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import PriorityBar from '../components/PriorityBar';
 import StatusStepper from '../components/StatusStepper';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
+import Avatar from '../components/Avatar';
 import { useToast } from '../components/Toast';
 import { priorityColor, priorityLabel } from '../utils/priority';
 
@@ -30,7 +31,18 @@ export default function IssueDetailPage() {
   const [issue, setIssue] = useState(null);
   const [comment, setComment] = useState('');
   const [voting, setVoting] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [statusImages, setStatusImages] = useState([]);
+  const [statusPreviews, setStatusPreviews] = useState([]);
+  const [updating, setUpdating] = useState(false);
+  const statusFileInputRef = useRef(null);
+  const statusPreviewRefs = useRef(new Set());
+
+  useEffect(() => {
+    const urls = statusPreviewRefs.current;
+    return () => urls.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -65,13 +77,60 @@ export default function IssueDetailPage() {
   };
 
   const handleStatusChange = async (status) => {
+    if (updating) return;
+    setUpdating(true);
     try {
-      const { data } = await api.put(`/issues/${id}`, { status });
+      const formData = new FormData();
+      formData.append('status', status);
+      statusImages.forEach((img) => formData.append('images', img));
+      const { data } = await api.put(`/issues/${id}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setIssue(data);
+      statusPreviews.forEach((url) => statusPreviewRefs.current.delete(url));
+      setStatusImages([]);
+      setStatusPreviews([]);
       toast({ variant: 'success', title: 'Status updated', description: `Issue is now ${status.replace('-', ' ')}.` });
     } catch (err) {
       toast({ variant: 'error', title: 'Update failed', description: err.response?.data?.error || 'Please try again.' });
     }
+    setUpdating(false);
+  };
+
+  const handleStatusImages = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length + statusImages.length > 5) {
+      toast({ variant: 'error', title: 'Too many images', description: 'Maximum 5 photos allowed.' });
+      return;
+    }
+    const urls = files.map((f) => URL.createObjectURL(f));
+    urls.forEach((u) => statusPreviewRefs.current.add(u));
+    setStatusImages((prev) => [...prev, ...files]);
+    setStatusPreviews((prev) => [...prev, ...urls]);
+    e.target.value = '';
+  };
+
+  const removeStatusImage = (index) => {
+    setStatusImages((prev) => prev.filter((_, i) => i !== index));
+    setStatusPreviews((prev) => {
+      const url = prev[index];
+      if (url) {
+        statusPreviewRefs.current.delete(url);
+        URL.revokeObjectURL(url);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const handleAnalyze = async () => {
+    if (analyzing) return;
+    setAnalyzing(true);
+    try {
+      const { data } = await api.post(`/issues/${id}/analyze`);
+      setIssue(data);
+      toast({ variant: 'success', title: 'AI solution generated', description: 'A precise practical solution has been recommended.' });
+    } catch (err) {
+      toast({ variant: 'error', title: 'AI analysis failed', description: err.response?.data?.error || 'Please try again later.' });
+    }
+    setAnalyzing(false);
   };
 
   const handleDelete = async () => {
@@ -125,7 +184,10 @@ export default function IssueDetailPage() {
             <div className="mt-2.5 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
               <span className={`badge badge-${issue.status}`}>{issue.status}</span>
               <span className="rounded-full bg-surface-3 px-2.5 py-0.5 font-medium capitalize">{issue.category}</span>
-              <span>by {issue.author?.name || 'Anonymous'}</span>
+              <span className="flex items-center gap-1">
+                <Avatar user={issue.author} size="xs" />
+                <span>by {issue.author?.name || 'Anonymous'}</span>
+              </span>
               <span aria-hidden="true">·</span>
               <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
             </div>
@@ -226,9 +288,36 @@ export default function IssueDetailPage() {
             <PriorityBar score={issue.aiPriority} size="md" showLabel={false} />
           </div>
 
+          {issue.aiSolution ? (
+            <div className="mt-5">
+              <p className="mb-2.5 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+                <Sparkles size={13} className="text-accent" aria-hidden="true" />
+                AI Recommended Solution
+              </p>
+              <div className="rounded-xl border border-accent/30 bg-surface p-4">
+                <p className="text-sm leading-relaxed text-ink">{issue.aiSolution}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-line bg-surface p-4">
+              <p className="text-sm text-ink-soft">
+                No AI solution generated yet for this issue.
+              </p>
+              <button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={analyzing}
+                className="btn btn-primary btn-sm mt-3"
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                {analyzing ? 'Generating…' : 'Generate AI Solution'}
+              </button>
+            </div>
+          )}
+
           {issue.aiSuggestions?.length > 0 && (
             <div className="mt-5">
-              <p className="mb-2.5 text-sm font-semibold text-ink-soft">Suggested Solutions</p>
+              <p className="mb-2.5 text-sm font-semibold text-ink-soft">Quick Actions</p>
               <div className="space-y-2.5">
                 {issue.aiSuggestions.map((s, i) => (
                   <div key={i} className="flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5">
@@ -243,10 +332,92 @@ export default function IssueDetailPage() {
           )}
         </section>
 
+        {issue.statusUpdates?.length > 0 && (
+          <section className="mt-6">
+            <h2 className="mb-3 flex items-center gap-2 font-display text-base font-semibold text-ink">
+              <History size={16} className="text-accent" aria-hidden="true" />
+              Status Updates
+            </h2>
+            <ol className="space-y-4 border-l-2 border-line pl-5">
+              {issue.statusUpdates.map((u, i) => (
+                <li key={i} className="relative">
+                  <span
+                    className="absolute -left-[7px] top-1.5 h-3 w-3 rounded-full border-2 border-surface bg-accent"
+                    aria-hidden="true"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`badge badge-${u.status}`}>{u.status}</span>
+                    <span className="text-sm text-ink-soft">{u.user?.name || 'Official'}</span>
+                    <span className="text-xs text-ink-faint">{new Date(u.createdAt).toLocaleString()}</span>
+                  </div>
+                  {u.images?.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {u.images.map((img, j) => (
+                        <a
+                          key={j}
+                          href={img}
+                          target="_blank"
+                          rel="noreferrer"
+                          aria-label={`Open after photo ${j + 1} for ${u.status} update in a new tab`}
+                          className="focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                        >
+                          <img
+                            src={img}
+                            alt={`After photo ${j + 1} for ${u.status} update`}
+                            loading="lazy"
+                            className="h-24 w-24 cursor-zoom-in rounded-xl border border-line object-cover transition-transform hover:scale-[1.03]"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         {isOfficial && (
           <section className="mt-6 rounded-2xl border border-line bg-surface-2 p-5">
             <h2 className="mb-3 font-display text-base font-semibold text-ink">Update Status</h2>
-            <StatusStepper status={issue.status} onSelect={handleStatusChange} />
+            <StatusStepper status={issue.status} onSelect={handleStatusChange} disabled={updating} />
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => statusFileInputRef.current?.click()}
+                className="btn btn-sm btn-secondary"
+                aria-label="Attach photos showing the change"
+              >
+                <ImagePlus size={14} aria-hidden="true" />
+                {statusPreviews.length > 0 ? 'Add more photos' : 'Attach photos'}
+              </button>
+              <input
+                ref={statusFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleStatusImages}
+                className="hidden"
+              />
+              {statusPreviews.map((src, i) => (
+                <div key={i} className="relative">
+                  <img src={src} alt={`Attached status photo ${i + 1}`} className="h-16 w-16 rounded-lg border border-line object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeStatusImage(i)}
+                    aria-label={`Remove attached photo ${i + 1}`}
+                    className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-danger text-white shadow-card transition-transform hover:scale-110"
+                  >
+                    <X size={11} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+              {statusPreviews.length > 0 && (
+                <p className="w-full text-xs text-ink-faint">
+                  Photos attach to the next status change to show the before/after difference.
+                </p>
+              )}
+            </div>
           </section>
         )}
 
@@ -262,7 +433,10 @@ export default function IssueDetailPage() {
             issue.comments.map((c, i) => (
               <div key={i} className="rounded-xl border border-line bg-surface-2 p-4">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-ink">{c.user?.name || 'User'}</p>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <Avatar user={c.user} size="xs" />
+                    {c.user?.name || 'User'}
+                  </p>
                   <p className="text-xs text-ink-faint">{new Date(c.createdAt).toLocaleString()}</p>
                 </div>
                 <p className="text-sm leading-relaxed text-ink-soft">{c.text}</p>

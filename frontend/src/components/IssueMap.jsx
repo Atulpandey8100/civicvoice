@@ -96,6 +96,9 @@ export default function IssueMap({ issues, className = '', height = '100%', cent
         center={center || userLocation}
         zoom={zoom ?? 12}
         scrollWheelZoom
+        minZoom={5}
+        maxBounds={INDIA_BOUNDS}
+        maxBoundsViscosity={1}
         style={{ height, width: '100%' }}
         className="z-0"
       >

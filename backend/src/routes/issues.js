@@ -57,8 +57,8 @@ router.use(apiLimiter);
 
 const validId = (id) => mongoose.isValidObjectId(id);
 
-const PUBLIC_AUTHOR = "firstName lastName name role";
-const PUBLIC_COMMENT_USER = "firstName lastName name role";
+const PUBLIC_AUTHOR = "firstName lastName name role avatar";
+const PUBLIC_COMMENT_USER = "firstName lastName name role avatar";
 
 const uploadImages = async (files = []) => {
   const urls = [];
@@ -81,6 +81,7 @@ const runAnalysis = (issue) => {
       return Issue.findByIdAndUpdate(issue._id, {
         aiPriority: aiResult.priority,
         aiSuggestions: aiResult.suggestions,
+        aiSolution: aiResult.solution,
       });
     })
     .catch(() => {});
@@ -119,11 +120,14 @@ const isValidLocation = (loc) => {
 
 router.get("/", async (req, res) => {
   try {
-    const { category, status } = req.query;
+    const { category, status, state } = req.query;
     const filter = {};
 
     if (category) filter.category = category;
+
     if (status) filter.status = status;
+
+    if (state) filter.state = state;
 
     let sort = String(req.query.sort || "-createdAt");
     const field = sort.startsWith("-") ? sort.slice(1) : sort;
@@ -271,6 +275,7 @@ router.get("/:id", async (req, res) => {
 
     const issue = await Issue.findById(req.params.id)
       .populate("author", PUBLIC_AUTHOR)
+      .populate("statusUpdates.user", PUBLIC_COMMENT_USER)
       .populate("comments.user", PUBLIC_COMMENT_USER);
 
     if (!issue) {
@@ -278,6 +283,43 @@ router.get("/:id", async (req, res) => {
         error: "Issue not found",
       });
     }
+
+    res.json(issue);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+
+router.post("/:id/analyze", async (req, res) => {
+  try {
+    if (!validId(req.params.id)) {
+      return res.status(400).json({
+        error: "Invalid issue id",
+      });
+    }
+
+    const issue = await Issue.findById(req.params.id);
+
+    if (!issue) {
+      return res.status(404).json({
+        error: "Issue not found",
+      });
+    }
+
+    const aiResult = await analyzeIssue(issue);
+
+    if (!aiResult || !Number.isFinite(aiResult.priority)) {
+      return res.status(502).json({
+        error: "AI could not analyze this issue right now. Please try again later.",
+      });
+    }
+
+    issue.aiPriority = aiResult.priority;
+    issue.aiSuggestions = aiResult.suggestions;
+    issue.aiSolution = aiResult.solution;
+    await issue.save();
 
     res.json(issue);
   } catch (err) {
@@ -329,6 +371,7 @@ router.post(
         description,
         category: category || "other",
         location: parsedLocation,
+        state: req.body.state,
         images: uploadedImages,
         author: req.userId,
       });
@@ -430,7 +473,21 @@ router.put(
         allowedUpdates.location = parsedLocation;
       }
 
-      if (req.files?.length) {
+      if (req.body.state) {
+        allowedUpdates.state = req.body.state;
+      }
+
+      if (isOfficial && req.body.status) {
+        if (req.files?.length) {
+          uploadedNewImages = await uploadImages(req.files);
+        }
+
+        issue.statusUpdates.push({
+          status: req.body.status,
+          user: req.userId,
+          images: uploadedNewImages,
+        });
+      } else if (req.files?.length) {
         uploadedNewImages = await uploadImages(req.files);
 
         const combined = [...(issue.images || []), ...uploadedNewImages];
@@ -465,6 +522,7 @@ router.put(
       }
 
       await issue.populate("author", PUBLIC_AUTHOR);
+      await issue.populate("statusUpdates.user", PUBLIC_COMMENT_USER);
 
       res.json(issue);
     } catch (err) {
@@ -614,7 +672,9 @@ router.delete("/:id", auth, async (req, res) => {
       });
     }
 
-    await removeStoredImages(issue.images);
+    const statusImages = (issue.statusUpdates || []).flatMap((u) => u.images || []);
+
+    await removeStoredImages([...(issue.images || []), ...statusImages]);
     await Issue.findByIdAndDelete(req.params.id);
 
     res.json({

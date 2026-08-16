@@ -10,6 +10,7 @@ import notificationRoutes from './routes/notifications.js';
 import adminRoutes from './routes/admin.js';
 import contactRoutes from './routes/contact.js';
 import uploadRouter from './routes/upload.js'; // Fixed: using ES module import with file extension
+import chatRoutes from './routes/chat.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api', uploadRouter); // Grouped with other routes
+app.use('/api/chat', chatRoutes);
 
 // 404 handler
 app.use((req, res) => {

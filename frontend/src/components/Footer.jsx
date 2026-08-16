@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Landmark } from 'lucide-react';
+import Logo from './Logo';
 
 const PLATFORM_LINKS = [
   { to: '/issues', label: 'Explore Issues' },
@@ -7,7 +7,6 @@ const PLATFORM_LINKS = [
 ];
 
 const COMMUNITY_LINKS = [
-  { to: '/about', label: 'About Us' },
   { to: '/how-it-works', label: 'How It Works' },
   { to: '/privacy', label: 'Privacy' },
   { to: '/contact', label: 'Contact Us' }
@@ -47,8 +46,8 @@ export default function Footer() {
               aria-label="CivicVoice home"
               className="inline-flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-white shadow-card">
-                <Landmark size={19} aria-hidden="true" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-card">
+                <Logo size={40} />
               </span>
               <span className="font-display text-2xl font-bold tracking-tight text-white">
                 Civic<span className="text-sky-400">Voice</span>

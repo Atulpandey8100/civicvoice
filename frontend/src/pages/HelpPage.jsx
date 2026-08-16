@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { LifeBuoy, HelpCircle, MapPin, UserRound, ShieldCheck, MessageCircle } from 'lucide-react';
+import Chatbot from '../components/Chatbot';
 
 const FAQS = [
   {
@@ -57,6 +58,8 @@ export default function HelpPage() {
           </details>
         ))}
       </div>
+
+      <Chatbot />
 
       <div className="card mt-10 flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:justify-between sm:text-left">
         <div>

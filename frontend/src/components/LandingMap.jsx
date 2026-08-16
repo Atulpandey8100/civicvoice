@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, LocateFixed, Filter, Layers, MapPin, Plus } from 'lucide-react';
+import { Search, LocateFixed, Filter, Layers, MapPin, Plus, X } from 'lucide-react';
 import IssueMap, { INDIA_BOUNDS } from './IssueMap';
+import { INDIAN_STATES } from '../data/india';
 import api from '../utils/api';
+
+const INDIA_CENTER = [20.5937, 78.9629];
 
 const CATEGORY_FILTERS = ['infrastructure', 'safety', 'environment', 'utilities', 'transportation', 'other'];
 const CATEGORY_LABELS = {
@@ -29,6 +32,7 @@ export default function LandingMap() {
   const [searchError, setSearchError] = useState('');
   const [flyTarget, setFlyTarget] = useState(null);
   const [locating, setLocating] = useState(false);
+  const [selectedState, setSelectedState] = useState('');
   const requestIdRef = useRef(0);
 
   const fetchIssues = useCallback(async () => {
@@ -50,7 +54,9 @@ export default function LandingMap() {
 
   useEffect(() => { fetchIssues(); }, [fetchIssues]);
 
-  const visibleIssues = issues.filter((i) => activeFilters.includes(i.category));
+  const visibleIssues = issues.filter(
+    (i) => activeFilters.includes(i.category) && (!selectedState || i.state === selectedState)
+  );
 
   const handleSearch = async (e) => {
     e.preventDefault();
@@ -101,6 +107,34 @@ export default function LandingMap() {
     );
   };
 
+  const handleStateChange = async (e) => {
+    const state = e.target.value;
+    setSelectedState(state);
+    setSearchError('');
+    if (!state) {
+      setFlyTarget({ coords: INDIA_CENTER, zoom: 5 });
+      return;
+    }
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
+          `${state}, India`
+        )}`
+      );
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0 && Array.isArray(data[0].boundingbox)) {
+        const [s, n, w, eEast] = data[0].boundingbox;
+        const lat = (parseFloat(s) + parseFloat(n)) / 2;
+        const lon = (parseFloat(w) + parseFloat(eEast)) / 2;
+        setFlyTarget({ coords: [lat, lon], zoom: 7 });
+      } else {
+        setSearchError('Could not locate that state');
+      }
+    } catch {
+      setSearchError('Could not locate that state');
+    }
+  };
+
   return (
     <div className="relative">
       <IssueMap
@@ -109,7 +143,7 @@ export default function LandingMap() {
         layer={layer}
         target={flyTarget}
         height="100%"
-        className="h-[400px] sm:h-[460px] lg:h-[540px]"
+        className="landing-map h-[400px] sm:h-[460px] lg:h-[540px]"
       />
 
       {loading && (
@@ -128,6 +162,17 @@ export default function LandingMap() {
 
       {/* Search + filter */}
       <form onSubmit={handleSearch} className="absolute left-3 right-3 top-3 z-[1000] flex items-center gap-2">
+        <select
+          value={selectedState}
+          onChange={handleStateChange}
+          aria-label="Select state"
+          className="w-40 shrink-0 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-2.5 py-2 text-sm font-medium text-slate-200 backdrop-blur focus:outline-none focus:border-sky-400/50 sm:w-48"
+        >
+          <option value="">All India</option>
+          {INDIAN_STATES.map((s) => (
+            <option key={s.state} value={s.state}>{s.state}</option>
+          ))}
+        </select>
         <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 shadow-card backdrop-blur">
           <Search size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
           <input
@@ -166,6 +211,20 @@ export default function LandingMap() {
         <p className="absolute left-3 top-[4.5rem] z-[1000] rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white shadow-card">
           {searchError}
         </p>
+      )}
+
+      {selectedState && !showFilters && !searchError && (
+        <div className="absolute right-3 top-[4.5rem] z-[1000] flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 text-xs font-medium text-sky-300 shadow-card backdrop-blur">
+          <span>Showing issues in {selectedState}</span>
+          <button
+            type="button"
+            onClick={() => handleStateChange({ target: { value: '' } })}
+            aria-label="Clear state filter"
+            className="rounded-md p-0.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <X size={13} aria-hidden="true" />
+          </button>
+        </div>
       )}
 
       {showFilters && (

@@ -2,16 +2,25 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ThumbsUp, Sparkles, ImageOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import Avatar from './Avatar';
 import { priorityLabel, priorityColor } from '../utils/priority';
 
 export default function IssueCard({ issue, onVote }) {
   const { user } = useAuth();
   const [animating, setAnimating] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
+  const [view, setView] = useState('before');
 
   const hasVoted = issue.votes?.includes(user?.id);
   const color = priorityColor(issue.aiPriority);
-  const hasImages = issue.images?.length > 0;
+  const afterImages = (issue.statusUpdates || []).flatMap((u) => u.images || []);
+  const hasAfterImages = afterImages.length > 0;
+  const photos = view === 'after' ? afterImages : issue.images;
+
+  const switchView = (next) => {
+    setView(next);
+    setActiveImg(0);
+  };
 
   const handleVote = () => {
     if (!user || animating) return;
@@ -24,10 +33,10 @@ export default function IssueCard({ issue, onVote }) {
     <article className="card card-hover overflow-hidden">
       {/* Hero image */}
       <div className="relative h-56 w-full bg-surface-3">
-        {hasImages ? (
+        {photos.length > 0 ? (
           <img
-            src={issue.images[activeImg]}
-            alt={issue.title}
+            src={photos[activeImg]}
+            alt={view === 'after' ? `${issue.title} after resolution` : issue.title}
             className="h-full w-full object-cover"
             loading="lazy"
           />
@@ -54,15 +63,41 @@ export default function IssueCard({ issue, onVote }) {
           {issue.aiPriority}/10
         </div>
 
+        {/* Before / After toggle - bottom left */}
+        {hasAfterImages && (
+          <div className="absolute bottom-3 left-3 flex gap-1">
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); switchView('before'); }}
+              aria-label="Show photo before resolution"
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm transition-colors ${
+                view === 'before' ? 'bg-accent text-white' : 'bg-black/55 text-white/80 hover:text-white'
+              }`}
+            >
+              Before
+            </button>
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); switchView('after'); }}
+              aria-label="Show photo after resolution"
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm transition-colors ${
+                view === 'after' ? 'bg-success text-white' : 'bg-black/55 text-white/80 hover:text-white'
+              }`}
+            >
+              After
+            </button>
+          </div>
+        )}
+
         {/* Carousel dots - bottom center */}
-        {hasImages && issue.images.length > 1 && (
+        {photos.length > 1 && (
           <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {issue.images.map((_, i) => (
+            {photos.map((_, i) => (
               <button
                 key={i}
                 type="button"
                 onClick={(e) => { e.preventDefault(); setActiveImg(i); }}
-                aria-label={`Show photo ${i + 1}`}
+                aria-label={`Show ${view} photo ${i + 1}`}
                 className={`h-1.5 rounded-full transition-all ${
                   i === activeImg ? 'w-4 bg-white' : 'w-1.5 bg-white/50'
                 }`}
@@ -84,7 +119,10 @@ export default function IssueCard({ issue, onVote }) {
             <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-soft">
               <span>{new Date(issue.createdAt).toLocaleDateString()}</span>
               <span aria-hidden="true">·</span>
-              <span>by {issue.author?.name || 'Anonymous'}</span>
+              <span className="flex items-center gap-1">
+                <Avatar user={issue.author} size="xs" />
+                <span>by {issue.author?.name || 'Anonymous'}</span>
+              </span>
             </p>
           </div>
         </div>
@@ -108,7 +146,7 @@ export default function IssueCard({ issue, onVote }) {
 
           <Link
             to={`/issues/${issue._id}`}
-            className="flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-blue-500 transition-transform hover:scale-105"
+            className="flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-white transition-transform hover:scale-105"
           >
             {issue.aiSuggestions?.length > 0 ? (
               <>

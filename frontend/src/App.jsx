@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './components/Toast';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import Footer from './components/Footer';
+import SplashScreen from './components/SplashScreen';
 import HomePage from './pages/HomePage';
 import AuthPage from './pages/AuthPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -31,23 +33,24 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/auth" />;
 }
 
-// 👇 Naya wrapper: "/" route decide karega LandingPage dikhani hai ya feed (HomePage)
-function RootRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return null; // ya ek loading spinner
-  return user ? <HomePage /> : <LandingPage />;
-}
-
 function App() {
+  const [opening, setOpening] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setOpening(false), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <AuthProvider>
       <ToastProvider>
         <BrowserRouter>
+          {opening && <SplashScreen />}
           <div className="flex min-h-screen flex-col bg-bg">
             <Navbar />
             <main className="flex-1 pb-20 md:pb-0">
               <Routes>
-                <Route path="/" element={<RootRoute />} />
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/home" element={<Navigate to="/" replace />} />
                 <Route path="/community" element={<HomePage />} />
                 <Route path="/auth" element={<AuthPage />} />

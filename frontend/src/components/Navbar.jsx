@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { Landmark, Bell, Menu, X, Sun, Moon, Monitor, LogOut, User, ShieldCheck, ChevronDown, Info, HelpCircle } from 'lucide-react';
+import { Bell, Menu, X, Sun, Moon, Monitor, LogOut, User, ShieldCheck, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import api from '../utils/api';
+import Avatar from './Avatar';
+import Logo from './Logo';
 
 function useClickOutside(onOutside) {
   const ref = useRef(null);
@@ -83,8 +85,6 @@ function UserMenu() {
   const ref = useClickOutside(() => setOpen(false));
   if (!user) return null;
 
-  const initials = (user.name || 'U').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
-
   return (
     <div className="relative" ref={ref}>
       <button
@@ -95,9 +95,7 @@ function UserMenu() {
         aria-expanded={open}
         className="flex h-9 items-center gap-2 rounded-xl border border-line bg-surface-2 px-1.5 transition-colors hover:border-line-strong"
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent text-xs font-bold text-white">
-          {initials}
-        </span>
+        <Avatar user={user} size="sm" />
         <span className="hidden max-w-28 truncate text-sm font-medium text-ink md:block">{user.name}</span>
         <ChevronDown size={14} className="text-ink-faint" aria-hidden="true" />
       </button>
@@ -115,12 +113,6 @@ function UserMenu() {
           </div>
           <Link to="/profile" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
             <User size={15} aria-hidden="true" /> My Profile
-          </Link>
-          <Link to="/about" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
-            <Info size={15} aria-hidden="true" /> About Us
-          </Link>
-          <Link to="/help" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
-            <HelpCircle size={15} aria-hidden="true" /> Help
           </Link>
           {user.role === 'admin' && (
             <Link to="/admin" onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-3.5 py-2 text-sm text-ink-soft transition-colors hover:bg-surface-2 hover:text-ink">
@@ -164,12 +156,21 @@ export default function Navbar() {
     }`;
 
   return (
-    <header className="sticky top-0 z-[1500] hidden border-b border-line bg-surface/85 backdrop-blur-md md:block">
+    <>
+      <header className="sticky top-0 z-[1500] border-b border-line bg-surface/85 backdrop-blur-md md:hidden">
+        <nav className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6" aria-label="Mobile brand">
+          <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
+            <Logo size={36} />
+            <span className="font-display text-base font-bold tracking-tight text-ink">
+              Civic<span className="text-accent">Voice</span>
+            </span>
+          </Link>
+        </nav>
+      </header>
+      <header className="sticky top-0 z-[1500] hidden border-b border-line bg-surface/85 backdrop-blur-md md:block">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6" aria-label="Main navigation">
         <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent text-white shadow-card">
-            <Landmark size={19} aria-hidden="true" />
-          </span>
+          <Logo size={42} />
           <span className="font-display text-lg font-bold tracking-tight text-ink">
             Civic<span className="text-accent">Voice</span>
           </span>
@@ -177,14 +178,11 @@ export default function Navbar() {
 
         <div className="hidden items-center gap-1 md:flex">
           <NavLink to="/" className={linkClass} end>Home</NavLink>
-          {user ? (
+          {user && (
             <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
-          ) : (
-            <>
-              <NavLink to="/about" className={linkClass}>About Us</NavLink>
-              <NavLink to="/help" className={linkClass}>Help</NavLink>
-            </>
           )}
+          <NavLink to="/about" className={linkClass}>About Us</NavLink>
+          <NavLink to="/help" className={linkClass}>Help</NavLink>
           <NavLink to="/report" className={linkClass}>Report an Issue</NavLink>
           {user && (
             <NavLink to="/notifications" className={linkClass}>
@@ -226,14 +224,11 @@ export default function Navbar() {
         <div id="mobile-nav" className="border-t border-line bg-surface px-4 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             <NavLink to="/" onClick={() => setMobileOpen(false)} className={linkClass} end>Home</NavLink>
-            {user ? (
+            {user && (
               <NavLink to="/dashboard" onClick={() => setMobileOpen(false)} className={linkClass}>Dashboard</NavLink>
-            ) : (
-              <>
-                <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
-                <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
-              </>
             )}
+            <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
+            <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
             <NavLink to="/report" onClick={() => setMobileOpen(false)} className={linkClass}>Report an Issue</NavLink>
             {user && (
               <>
@@ -248,8 +243,6 @@ export default function Navbar() {
                   </span>
                 </NavLink>
                 <NavLink to="/profile" onClick={() => setMobileOpen(false)} className={linkClass}>My Profile</NavLink>
-                <NavLink to="/about" onClick={() => setMobileOpen(false)} className={linkClass}>About Us</NavLink>
-                <NavLink to="/help" onClick={() => setMobileOpen(false)} className={linkClass}>Help</NavLink>
               </>
             )}
             {!user && (
@@ -268,5 +261,6 @@ export default function Navbar() {
         </div>
       )}
     </header>
+    </>
   );
 }

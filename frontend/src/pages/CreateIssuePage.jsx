@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ImagePlus, X, Send } from 'lucide-react';
 import api from '../utils/api';
+import { reverseGeocodeState } from '../utils/indiaGeo';
 import LocationPicker from '../components/LocationPicker';
 import { useToast } from '../components/Toast';
 import { CATEGORIES } from '../utils/priority';
@@ -66,6 +67,7 @@ const handleImageChange = (e) => {
       formData.append('title', form.title);
       formData.append('description', form.description);
       formData.append('category', form.category);
+      formData.append('state', await reverseGeocodeState(lat, lng));
       formData.append('location', JSON.stringify({
         coordinates: [lng, lat],
         address: form.address

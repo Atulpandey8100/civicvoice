@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ImagePlus, X, Send } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { reverseGeocodeState } from '../utils/indiaGeo';
 import { useToast } from '../components/Toast';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import { CATEGORIES } from '../utils/priority';
@@ -99,6 +100,7 @@ export default function EditIssuePage() {
       formData.append('title', form.title);
       formData.append('description', form.description);
       formData.append('category', form.category);
+      formData.append('state', await reverseGeocodeState(lat, lng));
       formData.append('location', JSON.stringify({
         coordinates: [lng, lat],
         address: form.address

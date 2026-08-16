@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 
-export default function StatusStepper({ status, onSelect }) {
+export default function StatusStepper({ status, onSelect, disabled = false }) {
   const steps = [
     { value: 'pending', label: 'Pending' },
     { value: 'in-progress', label: 'In Progress' },
@@ -9,7 +9,7 @@ export default function StatusStepper({ status, onSelect }) {
   ];
 
   const currentIndex = steps.findIndex((s) => s.value === status);
-  const editable = typeof onSelect === 'function';
+  const editable = typeof onSelect === 'function' && !disabled;
 
   return (
     <ol className="flex w-full items-center" aria-label={`Issue status: ${status}`}>

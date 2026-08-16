@@ -126,7 +126,7 @@ export default function AdminDashboard() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-ink">{issue.title}</p>
                   <p className="text-xs text-ink-soft">
-                    by {issue.author?.name} · {new Date(issue.createdAt).toLocaleDateString()}
+                    by {issue.author?.name || 'Anonymous'} · {new Date(issue.createdAt).toLocaleDateString()}
                   </p>
                 </div>
                 <span className={`badge badge-${issue.status}`}>{issue.status}</span>
