@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: civicvoice
+    runtime: node
+    region: oregon
+    rootDir: .
+    buildCommand: npm install && cd frontend && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://civicvoice.onrender.com

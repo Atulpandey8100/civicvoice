@@ -53,11 +53,16 @@ app.use('/api/contact', contactRoutes);
 app.use('/api', uploadRouter); // Grouped with other routes
 app.use('/api/chat', chatRoutes);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    error: 'Not found',
-  });
+// Serve frontend build in production
+const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
+app.use(express.static(frontendDist));
+
+// SPA fallback - serve index.html for non-API routes
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
 // Error handler
