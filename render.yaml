@@ -3,9 +3,8 @@ services:
     name: civicvoice
     runtime: node
     region: oregon
-    rootDir: .
-    buildCommand: npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend
-    startCommand: node backend/server.js
+    buildCommand: npm install && cd frontend && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && node server.js
     envVars:
       - key: NODE_ENV
         value: production
