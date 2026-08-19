@@ -15,4 +15,4 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: CORS_ORIGIN
-        value: https://civicvoice.onrender.com
+        value: https://civicvoice-ngc5.onrender.com
