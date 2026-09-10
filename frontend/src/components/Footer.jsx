@@ -46,9 +46,7 @@ export default function Footer() {
               aria-label="CivicVoice home"
               className="inline-flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-card">
-                <Logo size={40} />
-              </span>
+              <Logo size={40} />
               <span className="font-display text-2xl font-bold tracking-tight text-white">
                 Civic<span className="text-sky-400">Voice</span>
               </span>

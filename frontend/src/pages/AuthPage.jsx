@@ -10,6 +10,8 @@ import api from '../utils/api';
 const EMAIL_REGEX = /^[a-z0-9._%+-]+@gmail\.com$/i;
 const MOBILE_REGEX = /^[6-9]\d{9}$/;
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+const NAME_REGEX = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
 
 const INITIAL_FORM = {
   firstName: '',
@@ -19,6 +21,8 @@ const INITIAL_FORM = {
   otp: '',
   password: '',
   confirmPassword: '',
+  address: '',
+  pincode: '',
   state: '',
   district: '',
   consent: false
@@ -52,8 +56,15 @@ export default function AuthPage() {
     const next = {};
     if (!form.firstName.trim()) next.firstName = 'First name is required';
     else if (form.firstName.trim().length < 2) next.firstName = 'First name must be at least 2 characters';
+    else if (!NAME_REGEX.test(form.firstName.trim())) next.firstName = 'First name can only contain letters and spaces';
 
     if (!form.lastName.trim()) next.lastName = 'Last name is required';
+    else if (!NAME_REGEX.test(form.lastName.trim())) next.lastName = 'Last name can only contain letters and spaces';
+
+    if (form.address.trim() && form.address.trim().length > 200) next.address = 'Address must be under 200 characters';
+
+    if (!form.pincode) next.pincode = 'Pincode is required';
+    else if (!PINCODE_REGEX.test(form.pincode)) next.pincode = 'Enter a valid 6-digit Indian pincode';
 
     if (!form.mobile) next.mobile = 'Mobile number is required';
     else if (!MOBILE_REGEX.test(form.mobile)) next.mobile = 'Enter a valid 10-digit mobile number';
@@ -122,6 +133,8 @@ export default function AuthPage() {
           otp: form.otp.trim(),
           password: form.password,
           confirmPassword: form.confirmPassword,
+          address: form.address.trim(),
+          pincode: form.pincode.trim(),
           state: form.state,
           district: form.district,
           consent: form.consent
@@ -151,7 +164,7 @@ export default function AuthPage() {
       <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-4 py-10">
       <div className="w-full max-w-lg">
         <div className="mb-6 text-center">
-          <span className="mx-auto mb-3 block w-14">
+          <span className="mx-auto mb-3 block">
             <Logo size={56} />
           </span>
           <h1 className="font-display text-2xl font-bold tracking-tight text-ink">
@@ -335,6 +348,38 @@ export default function AuthPage() {
                     </select>
                     <FieldError message={errors.district} />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="address">Address</label>
+                  <input
+                    id="address"
+                    type="text"
+                    maxLength={200}
+                    value={form.address}
+                    onChange={setField('address')}
+                    placeholder="e.g. 12, Nehru Road, Near City Park"
+                    autoComplete="street-address"
+                  />
+                  <FieldError message={errors.address} />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="pincode">Pincode</label>
+                  <input
+                    id="pincode"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={form.pincode}
+                    onChange={(e) => {
+                      setForm((prev) => ({ ...prev, pincode: e.target.value.replace(/\D/g, '') }));
+                      setErrors((prev) => ({ ...prev, pincode: undefined }));
+                    }}
+                    placeholder="6-digit postal code, e.g. 834001"
+                    autoComplete="postal-code"
+                  />
+                  <FieldError message={errors.pincode} />
                 </div>
 
                 <div className="form-group">

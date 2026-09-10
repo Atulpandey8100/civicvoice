@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, MapPin, ArrowRight, ChevronRight, ImageOff } from 'lucide-react';
+import { Sparkles, MapPin, ArrowRight, ChevronRight, ImageOff, Megaphone, CircleAlert, ClipboardList, Building2 } from 'lucide-react';
 import LandingMap from '../components/LandingMap';
 import api from '../utils/api';
 
@@ -115,6 +115,59 @@ function IssueSection({ title, subtitle, issues, loading, viewMoreTo }) {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+const OVERVIEW_CARDS = [
+  {
+    icon: CircleAlert,
+    title: 'The problem',
+    text: 'Local issues like broken roads, streetlights and drainage often go unheard. CivicVoice gives every resident a simple way to surface what is broken in their neighbourhood.'
+  },
+  {
+    icon: Megaphone,
+    title: 'Report in minutes',
+    text: 'Describe the issue, add photos, and drop a pin on the map. AI scores its urgency and the problem appears instantly on the community map.'
+  },
+  {
+    icon: ClipboardList,
+    title: 'Community prioritizes',
+    text: 'Neighbours vote on what matters most, so the most pressing problems rise to the top of every dashboard.'
+  },
+  {
+    icon: Building2,
+    title: 'Authorities act',
+    text: 'Officials see ranked, mapped evidence, resolve issues, and publish status updates — so the whole community knows when things get fixed.'
+  }
+];
+
+function CivicOverview() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6 lg:px-8">
+      <div className="text-center">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+          From citizen report to real change
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
+          CivicVoice is a citizen-engagement platform that turns local problems into visible,
+          prioritized, and trackable issues — helping communities and authorities work together.
+        </p>
+      </div>
+      <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {OVERVIEW_CARDS.map(({ icon: Icon, title, text }) => (
+          <div
+            key={title}
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 transition-colors hover:border-sky-400/40 hover:bg-white/[0.07]"
+          >
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-400/15 text-sky-300">
+              <Icon size={20} aria-hidden="true" />
+            </span>
+            <h3 className="mt-4 font-display text-base font-semibold text-white">{title}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-400">{text}</p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
@@ -242,6 +295,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <CivicOverview />
 
       <IssueStats />
 

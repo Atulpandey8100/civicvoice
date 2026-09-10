@@ -38,6 +38,11 @@ const otpLimiter = rateLimit({
 
 const ALLOWED_ROLES = ['resident'];
 
+const NAME_REGEX = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+
+const isValidName = (value) => NAME_REGEX.test(value);
+
 const OTP_VALID_MS = 10 * 60 * 1000;
 
 const createOtp = async (email, purpose) => {
@@ -180,8 +185,8 @@ router.post(
   '/register',
   authLimiter,
   [
-    body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters'),
-    body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters'),
+    body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters and spaces'),
+    body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters and spaces'),
     body('mobile').matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit mobile number'),
     body('email')
       .isEmail()
@@ -194,6 +199,8 @@ router.post(
       .isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
       .withMessage('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character'),
     body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match'),
+    body('address').optional().trim().isLength({ max: 200 }).withMessage('Address must be under 200 characters'),
+    body('pincode').matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
     body('state').trim().notEmpty().withMessage('Please select your state'),
     body('district').trim().notEmpty().withMessage('Please select your district'),
     body('consent').isBoolean().withMessage('Consent is required').custom((value) => value === true).withMessage('You must accept the consent'),
@@ -202,7 +209,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const { firstName, lastName, mobile, email, password, state, district } = req.body;
+      const { firstName, lastName, mobile, email, password, address, pincode, state, district } = req.body;
 
       const otpValid = await verifyOtp(email, 'register', req.body.otp);
       if (!otpValid) {
@@ -216,7 +223,7 @@ router.post(
         mobile,
         email,
         password,
-        address: { state, district },
+        address: { street: address, pincode, state, district },
         consent: true,
         role
       });
@@ -314,9 +321,11 @@ router.put(
   '/me',
   auth,
   [
-    body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters'),
-    body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters'),
+    body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters and spaces'),
+    body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters and spaces'),
     body('mobile').optional().matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit mobile number'),
+    body('address').optional({ values: 'falsy' }).trim().isLength({ max: 200 }).withMessage('Address must be under 200 characters'),
+    body('pincode').optional({ values: 'falsy' }).trim().matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
     body('state').optional().trim().notEmpty().withMessage('Please select your state'),
     body('district').optional().trim().notEmpty().withMessage('Please select your district')
   ],
@@ -326,13 +335,15 @@ router.put(
       const user = await User.findById(req.userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const { firstName, lastName, mobile, state, district } = req.body;
+      const { firstName, lastName, mobile, address, pincode, state, district } = req.body;
 
       if (firstName !== undefined) user.firstName = firstName;
       if (lastName !== undefined) user.lastName = lastName;
       if (mobile !== undefined) user.mobile = mobile;
-      if (state !== undefined || district !== undefined) {
+      if (address !== undefined || pincode !== undefined || state !== undefined || district !== undefined) {
         user.address = {
+          street: address ? address : user.address?.street,
+          pincode: pincode ? pincode : user.address?.pincode,
           state: state !== undefined ? state : user.address?.state,
           district: district !== undefined ? district : user.address?.district
         };

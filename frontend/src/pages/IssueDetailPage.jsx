@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { ArrowLeft, MapPin, ThumbsUp, Sparkles, Trash2, Pencil, MessageSquare, ImagePlus, X, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
+import { reverseGeocodeLocation } from '../utils/indiaGeo';
 import PriorityBar from '../components/PriorityBar';
 import StatusStepper from '../components/StatusStepper';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -22,6 +23,62 @@ const priorityIcon = (priority) => {
     iconAnchor: [18, 18]
   });
 };
+
+function LocationBlock({ issue }) {
+  const [geocoded, setGeocoded] = useState(null);
+  const coords = issue.location?.coordinates;
+
+  useEffect(() => {
+    let active = true;
+    if (
+      Array.isArray(coords) &&
+      coords.length === 2 &&
+      coords[0] !== 0 &&
+      coords[1] !== 0
+    ) {
+      reverseGeocodeLocation(coords[1], coords[0]).then((result) => {
+        if (active) setGeocoded(result);
+      });
+    }
+    return () => { active = false; };
+  }, [coords]);
+
+  const freeAddress = (issue.location?.address || '').trim();
+  const state = issue.state || '';
+  let location = freeAddress;
+  if (state && !location.toLowerCase().includes(state.toLowerCase())) {
+    location = location ? `${location}, ${state}` : state;
+  }
+  if (!location && geocoded?.location) location = geocoded.location;
+
+  const pincode = (issue.address?.pincode || issue.location?.pincode || geocoded?.pincode || '').trim();
+  const hasAny = Boolean(location) || Boolean(pincode) || Boolean(coords);
+
+  if (!hasAny) return null;
+
+  return (
+    <div className="mt-5 rounded-xl border border-line bg-surface-2 p-4">
+      <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+        <MapPin size={14} aria-hidden="true" />
+        Location
+      </p>
+      <dl className="space-y-1.5 text-sm">
+        {location && (
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-semibold text-ink">Location:</dt>
+            <dd className="text-ink">{location}</dd>
+          </div>
+        )}
+        {pincode && (
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-semibold text-ink">Pincode:</dt>
+            <dd className="text-ink">{pincode}</dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  );
+}
 
 export default function IssueDetailPage() {
   const { id } = useParams();
@@ -247,12 +304,7 @@ export default function IssueDetailPage() {
           </div>
         )}
 
-        {issue.location?.address && (
-          <p className="mt-5 flex items-center gap-1.5 text-sm text-ink-soft">
-            <MapPin size={14} aria-hidden="true" />
-            {issue.location.address}
-          </p>
-        )}
+        <LocationBlock issue={issue} />
 
         {hasCoords && (
           <div className="mt-4 overflow-hidden rounded-xl border border-line">

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Landmark, AlertCircle, ArrowLeft, KeyRound, MailCheck, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, KeyRound, MailCheck, ShieldCheck } from 'lucide-react';
 import api from '../utils/api';
 import { useToast } from '../components/Toast';
 

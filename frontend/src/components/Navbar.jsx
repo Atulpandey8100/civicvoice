@@ -79,6 +79,27 @@ function ThemeToggle() {
   );
 }
 
+function NotificationBell({ unreadCount }) {
+  return (
+    <Link
+      to="/notifications"
+      title="Notifications"
+      aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+      className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface-2 text-ink-soft transition-colors hover:border-line-strong hover:text-ink"
+    >
+      <Bell size={17} aria-hidden="true" />
+      {unreadCount > 0 && (
+        <span
+          className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white"
+          aria-hidden="true"
+        >
+          {unreadCount > 9 ? '9+' : unreadCount}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function UserMenu() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -151,76 +172,35 @@ export default function Navbar() {
   }, [user]);
 
   const linkClass = ({ isActive }) =>
-    `rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
+    `rounded-xl px-4 py-2.5 text-base font-medium transition-colors ${
       isActive ? 'bg-accent-soft text-accent' : 'text-ink-soft hover:bg-surface-2 hover:text-ink'
     }`;
 
   return (
     <>
       <header className="sticky top-0 z-[1500] border-b border-line bg-surface/85 backdrop-blur-md md:hidden">
-        <nav className="mx-auto flex h-14 max-w-7xl items-center px-4 sm:px-6" aria-label="Mobile brand">
+        <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6" aria-label="Mobile brand">
           <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
-            <Logo size={36} />
-            <span className="font-display text-base font-bold tracking-tight text-ink">
+            <Logo size={42} />
+            <span className="font-display text-2xl font-bold tracking-tight text-ink">
               Civic<span className="text-accent">Voice</span>
             </span>
           </Link>
+          <div className="flex items-center gap-2">
+            <NotificationBell unreadCount={unreadCount} />
+            <button
+              type="button"
+              onClick={() => setMobileOpen((o) => !o)}
+              aria-label="Toggle navigation menu"
+              aria-expanded={mobileOpen}
+              aria-controls="mobile-nav"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-line bg-surface-2 text-ink-soft md:hidden"
+            >
+              {mobileOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+            </button>
+          </div>
         </nav>
-      </header>
-      <header className="sticky top-0 z-[1500] hidden border-b border-line bg-surface/85 backdrop-blur-md md:block">
-      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6" aria-label="Main navigation">
-        <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
-          <Logo size={42} />
-          <span className="font-display text-lg font-bold tracking-tight text-ink">
-            Civic<span className="text-accent">Voice</span>
-          </span>
-        </Link>
-
-        <div className="hidden items-center gap-1 md:flex">
-          <NavLink to="/" className={linkClass} end>Home</NavLink>
-          {user && (
-            <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
-          )}
-          <NavLink to="/about" className={linkClass}>About Us</NavLink>
-          <NavLink to="/help" className={linkClass}>Help</NavLink>
-          <NavLink to="/report" className={linkClass}>Report an Issue</NavLink>
-          {user && (
-            <NavLink to="/notifications" className={linkClass}>
-                <span className="flex items-center gap-1.5">
-                  Notifications
-                  {unreadCount > 0 && (
-                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </span>
-              </NavLink>
-          )}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          {user ? (
-            <UserMenu />
-          ) : (
-            <Link to="/auth" className="btn btn-primary hidden sm:inline-flex">
-              Get Started
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={() => setMobileOpen((o) => !o)}
-            aria-label="Toggle navigation menu"
-            aria-expanded={mobileOpen}
-            aria-controls="mobile-nav"
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-line bg-surface-2 text-ink-soft md:hidden"
-          >
-            {mobileOpen ? <X size={17} aria-hidden="true" /> : <Menu size={17} aria-hidden="true" />}
-          </button>
-        </div>
-      </nav>
-
-      {mobileOpen && (
+        {mobileOpen && (
         <div id="mobile-nav" className="border-t border-line bg-surface px-4 py-3 md:hidden">
           <div className="flex flex-col gap-1">
             <NavLink to="/" onClick={() => setMobileOpen(false)} className={linkClass} end>Home</NavLink>
@@ -260,6 +240,38 @@ export default function Navbar() {
           </div>
         </div>
       )}
+      </header>
+      <header className="sticky top-0 z-[1500] hidden border-b border-line bg-surface/85 backdrop-blur-md md:block">
+      <nav className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6" aria-label="Main navigation">
+        <Link to="/" className="flex items-center gap-2.5" aria-label="CivicVoice home">
+          <Logo size={48} />
+          <span className="font-display text-3xl font-bold tracking-tight text-ink">
+            Civic<span className="text-accent">Voice</span>
+          </span>
+        </Link>
+
+        <div className="hidden items-center gap-1 md:flex">
+          <NavLink to="/" className={linkClass} end>Home</NavLink>
+          {user && (
+            <NavLink to="/dashboard" className={linkClass}>Dashboard</NavLink>
+          )}
+          <NavLink to="/about" className={linkClass}>About Us</NavLink>
+          <NavLink to="/help" className={linkClass}>Help</NavLink>
+          <NavLink to="/report" className={linkClass}>Report an Issue</NavLink>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <NotificationBell unreadCount={unreadCount} />
+          <ThemeToggle />
+          {user ? (
+            <UserMenu />
+          ) : (
+            <Link to="/auth" className="btn btn-primary hidden sm:inline-flex">
+              Get Started
+            </Link>
+          )}
+        </div>
+      </nav>
     </header>
     </>
   );

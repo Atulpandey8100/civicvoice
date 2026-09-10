@@ -464,6 +464,38 @@
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
 }
 
+/* Animate state fill/stroke changes for the one-by-one glow effect */
+.landing-map .leaflet-interactive {
+  transition: fill 0.7s ease, fill-opacity 0.7s ease, stroke 0.7s ease,
+    stroke-width 0.7s ease, filter 0.7s ease;
+}
+
+/* Glowing state: soft halo pulsing around the highlighted state */
+.landing-map .state-glow {
+  animation: land-map-glow 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px var(--accent, #2563eb))
+    drop-shadow(0 0 3px var(--accent, #2563eb));
+}
+
+@keyframes land-map-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 5px var(--accent, #2563eb))
+      drop-shadow(0 0 2px var(--accent, #2563eb));
+  }
+  50% {
+    filter: drop-shadow(0 0 14px var(--accent, #2563eb))
+      drop-shadow(0 0 6px var(--accent, #2563eb));
+  }
+}
+
+/* Legend swatch for the currently glowing state */
+.landing-map .state-glow-legend {
+  background: var(--accent, #2563eb);
+  animation: land-map-glow 1.4s ease-in-out infinite;
+}
+
+
 /* ------------------------------------------------------------------ */
 /* Motion                                                              */
 /* ------------------------------------------------------------------ */

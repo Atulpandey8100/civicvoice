@@ -1,9 +1,5 @@
 # CivicVoice
 
-<p align="center">
-  <img src="frontend/public/logo.png" alt="CivicVoice logo" width="260" />
-</p>
-
 A citizen-engagement platform where residents report community issues, vote on priorities, and track official progress — all mapped on an interactive OpenStreetMap view, with Gemini AI providing priority scores, solution suggestions, and a conversational assistant (CivicBot).
 
 Local governments often overlook community concerns. CivicVoice lets residents submit issues with photos and geolocation, vote on what matters most, and follow issues from Pending → In Progress → Resolved → Closed, while officials and administrators triage and manage them.

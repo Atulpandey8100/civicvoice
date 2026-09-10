@@ -7,10 +7,8 @@ export default function SplashScreen() {
       aria-label="Loading CivicVoice"
       className="fixed inset-0 z-[2000] flex flex-col items-center justify-center gap-5 bg-surface"
     >
-      <div className="animate-pop-in">
-        <div className="animate-pulse">
-          <Logo size={92} />
-        </div>
+      <div className="animate-pulse">
+        <Logo size={92} />
       </div>
       <p className="font-display text-2xl font-bold tracking-tight text-ink">
         Civic<span className="text-accent">Voice</span>

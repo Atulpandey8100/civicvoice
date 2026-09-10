@@ -11,6 +11,9 @@ import { INDIAN_STATES, districtsOf } from '../data/india';
 
 const ROLE_LABELS = { resident: 'Resident', official: 'Official', admin: 'Admin' };
 
+const NAME_REGEX = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
@@ -23,6 +26,8 @@ export default function ProfilePage() {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     mobile: user?.mobile || '',
+    address: user?.address?.street || '',
+    pincode: user?.address?.pincode || '',
     state: user?.address?.state || '',
     district: user?.address?.district || ''
   });
@@ -46,6 +51,8 @@ export default function ProfilePage() {
           firstName: data.user.firstName || '',
           lastName: data.user.lastName || '',
           mobile: data.user.mobile || '',
+          address: data.user.address?.street || '',
+          pincode: data.user.address?.pincode || '',
           state: data.user.address?.state || '',
           district: data.user.address?.district || ''
         });
@@ -79,6 +86,8 @@ export default function ProfilePage() {
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
       mobile: user?.mobile || '',
+      address: user?.address?.street || '',
+      pincode: user?.address?.pincode || '',
       state: user?.address?.state || '',
       district: user?.address?.district || ''
     });
@@ -87,6 +96,18 @@ export default function ProfilePage() {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+    if (!NAME_REGEX.test(form.firstName.trim())) {
+      toast({ variant: 'error', title: 'Invalid first name', description: 'Names can only contain letters and spaces.' });
+      return;
+    }
+    if (!NAME_REGEX.test(form.lastName.trim())) {
+      toast({ variant: 'error', title: 'Invalid last name', description: 'Names can only contain letters and spaces.' });
+      return;
+    }
+    if (form.pincode && !PINCODE_REGEX.test(form.pincode)) {
+      toast({ variant: 'error', title: 'Invalid pincode', description: 'Enter a valid 6-digit Indian pincode.' });
+      return;
+    }
     setSaving(true);
     try {
       const { data } = await api.put('/auth/me', form);
@@ -95,6 +116,8 @@ export default function ProfilePage() {
         firstName: data.user.firstName || '',
         lastName: data.user.lastName || '',
         mobile: data.user.mobile || '',
+        address: data.user.address?.street || '',
+        pincode: data.user.address?.pincode || '',
         state: data.user.address?.state || '',
         district: data.user.address?.district || ''
       });
@@ -266,6 +289,29 @@ export default function ProfilePage() {
                 required
               />
             </div>
+            <div className="form-group">
+              <label htmlFor="address">Address</label>
+              <input
+                id="address"
+                type="text"
+                maxLength={200}
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+                placeholder="e.g. 12, Nehru Road, Near City Park"
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="pincode">Pincode</label>
+              <input
+                id="pincode"
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={form.pincode}
+                onChange={(e) => setForm({ ...form, pincode: e.target.value.replace(/\D/g, '') })}
+                placeholder="6-digit postal code"
+              />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="form-group">
                 <label htmlFor="state">State</label>
@@ -319,6 +365,14 @@ export default function ProfilePage() {
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Mobile</dt>
               <dd className="mt-0.5 text-sm text-ink">{user.mobile || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Address</dt>
+              <dd className="mt-0.5 text-sm text-ink">{user.address?.street || '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Pincode</dt>
+              <dd className="mt-0.5 text-sm text-ink">{user.address?.pincode || '—'}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">State</dt>

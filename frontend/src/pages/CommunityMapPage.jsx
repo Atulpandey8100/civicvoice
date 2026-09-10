@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPinned, MapPin } from 'lucide-react';
-import api from '../utils/api';
+import { fetchAllIssues } from '../utils/api';
 import IssueMap from '../components/IssueMap';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
@@ -15,10 +15,9 @@ export default function CommunityMapPage() {
   const fetchIssues = useCallback(async () => {
     const requestId = ++requestIdRef.current;
     try {
-      const params = new URLSearchParams({ page: '1', limit: '100', sort: '-voteCount' });
-      const { data } = await api.get(`/issues?${params}`);
+      const all = await fetchAllIssues({ sort: '-voteCount' });
       if (requestId !== requestIdRef.current) return;
-      setIssues(data.issues || []);
+      setIssues(all);
       setError('');
     } catch {
       if (requestId !== requestIdRef.current) return;

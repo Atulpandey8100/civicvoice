@@ -41,6 +41,11 @@ export default function AboutPage() {
         participation with AI-assisted analysis, we make it easy to see what matters and push for real
         change.
       </p>
+      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft">
+        Local governments are often overwhelmed and community concerns go unheard. CivicVoice lets
+        residents report issues with photos and a map pin, so officials see exactly what needs fixing,
+        where, and how urgently — turning scattered complaints into a clear, prioritized action list.
+      </p>
 
       <section className="mt-10" aria-label="What we stand for">
         <h2 className="font-display text-xl font-bold tracking-tight text-ink">What we stand for</h2>

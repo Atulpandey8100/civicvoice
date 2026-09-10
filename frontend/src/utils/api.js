@@ -22,3 +22,22 @@ api.interceptors.response.use(
 );
 
 export default api;
+
+// Fetch every issue from the backend by paging through all results.
+// The server caps `limit` at 100, so a single page cannot return everything.
+export async function fetchAllIssues(params = {}, pageSize = 100) {
+  const all = [];
+  let page = 1;
+  let total = Infinity;
+  while (all.length < total) {
+    const { data } = await api.get('/issues', {
+      params: { ...params, page, limit: pageSize },
+    });
+    const items = data.issues || [];
+    all.push(...items);
+    total = typeof data.total === 'number' ? data.total : all.length;
+    if (items.length === 0) break;
+    page += 1;
+  }
+  return all;
+}

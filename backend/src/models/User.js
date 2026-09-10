@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema({
   mobile: { type: String },
   avatar: { type: String },
   address: {
+    street: { type: String },
+    pincode: { type: String },
     state: { type: String },
     district: { type: String }
   },

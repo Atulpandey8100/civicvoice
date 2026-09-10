@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, Plus, SlidersHorizontal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import api from '../utils/api';
+import api, { fetchAllIssues } from '../utils/api';
 import IssueCard from '../components/IssueCard';
 import IssueMap from '../components/IssueMap';
 import LoadingSkeleton from '../components/LoadingSkeleton';
@@ -14,6 +14,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const toast = useToast();
   const [issues, setIssues] = useState([]);
+  const [mapIssues, setMapIssues] = useState([]);
   const [filter, setFilter] = useState({ category: '', status: '', sort: '-voteCount' });
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -65,6 +66,23 @@ export default function HomePage() {
     }
   }, [filter]);
 
+  // Map shows ALL issues matching the current filter (not just the paginated cards).
+  const fetchMapIssues = useCallback(async () => {
+    try {
+      const params = {};
+      if (filter.category) params.category = filter.category;
+      if (filter.status) params.status = filter.status;
+      const all = await fetchAllIssues(params);
+      setMapIssues(all);
+    } catch {
+      // silent fail — map simply keeps its last known markers
+    }
+  }, [filter]);
+
+  useEffect(() => {
+    fetchMapIssues();
+  }, [fetchMapIssues]);
+
   // 👇 Background check — sirf tab naye issues ko live list mein daalega jab default sort/filter ho
   const checkForNewIssues = useCallback(async () => {
     // Sirf default view (no filter, default sort) pe hi auto-insert karo,
@@ -101,10 +119,11 @@ export default function HomePage() {
     const handler = () => {
       setPage(1);
       fetchIssues(1);
+      fetchMapIssues();
     };
     window.addEventListener('civicvoice:issue-created', handler);
     return () => window.removeEventListener('civicvoice:issue-created', handler);
-  }, [fetchIssues]);
+  }, [fetchIssues, fetchMapIssues]);
 
   // Dusre users ke posts ke liye background polling
   useEffect(() => {
@@ -142,7 +161,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:flex lg:gap-6">
       <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)] lg:w-[46%] lg:shrink-0">
-        <IssueMap issues={issues} className="h-[340px] lg:h-full" height="100%" />
+        <IssueMap issues={mapIssues} className="h-[340px] lg:h-full" height="100%" />
       </div>
 
       <section className="mt-6 lg:mt-0 lg:min-w-0 lg:flex-1" aria-label="Issues list">
