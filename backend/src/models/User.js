@@ -3,10 +3,12 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
   firstName: { type: String, required: true, trim: true },
+  middleName: { type: String, trim: true, default: '' },
   lastName: { type: String, required: true, trim: true },
   name: { type: String, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
+  countryCode: { type: String, trim: true, default: '+91' },
   mobile: { type: String },
   avatar: { type: String },
   address: {
@@ -22,8 +24,8 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 userSchema.pre('save', async function (next) {
-  if (this.isNew || this.isModified('firstName') || this.isModified('lastName')) {
-    this.name = `${this.firstName || ''} ${this.lastName || ''}`.trim();
+  if (this.isNew || this.isModified('firstName') || this.isModified('middleName') || this.isModified('lastName')) {
+    this.name = [this.firstName || '', this.middleName || '', this.lastName || ''].filter(Boolean).join(' ').trim();
   }
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 10);

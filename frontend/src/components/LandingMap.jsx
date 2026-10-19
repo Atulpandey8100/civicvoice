@@ -30,14 +30,11 @@ const CATEGORY_LABELS = {
   other: 'Other'
 };
 
-const controlClass =
-  'flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 text-sm font-medium text-slate-300 backdrop-blur transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-60';
-
 function MapController({ target, geo }) {
   const map = useMap();
 
   useEffect(() => {
-    map.fitBounds(INDIA_BOUNDS, { padding: [16, 16] });
+    map.fitBounds(INDIA_BOUNDS, { padding: [32, 32], maxZoom: 5 });
   }, [map]);
 
   useEffect(() => {
@@ -272,12 +269,152 @@ export default function LandingMap() {
   const reportedKey = Object.keys(reported).sort().join(',');
 
   return (
-    <div className="relative">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] shadow-card">
+      {/* Search + controls row */}
+      <div className="px-5 pt-5 pb-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2">
+          <form onSubmit={handleSearch} className="flex min-w-0 flex-1 items-center gap-2">
+            <select
+              value={selectedState}
+              onChange={handleStateChange}
+              aria-label="Select state"
+              className="w-36 shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2 text-sm font-medium text-slate-200 focus:outline-none focus:border-sky-400/50 sm:w-44"
+            >
+              <option value="">All India</option>
+              {INDIAN_STATES.map((s) => (
+                <option key={s.state} value={s.state}>{s.state}</option>
+              ))}
+            </select>
+            <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <Search size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search a location…"
+                aria-label="Search location"
+                className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
+              />
+              <button
+                type="submit"
+                disabled={searching || !query.trim()}
+                className="shrink-0 rounded-lg bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-sky-400 disabled:opacity-60"
+              >
+                {searching ? '…' : 'Search'}
+              </button>
+            </div>
+          </form>
+          <button
+            type="button"
+            onClick={handleLocate}
+            disabled={locating}
+            aria-label="Locate me"
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LocateFixed size={15} aria-hidden="true" />
+            {locating ? 'Locating…' : 'Locate'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayer((l) => (l === 'street' ? 'dark' : 'street'))}
+            aria-label={`Switch to ${layer === 'street' ? 'dark' : 'street'} map layer`}
+            aria-pressed={layer === 'street'}
+            className="flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:text-white"
+          >
+            <Layers size={15} aria-hidden="true" />
+            {layer === 'street' ? 'Dark' : 'Street'}
+          </button>
+        </div>
+
+        {/* Search error */}
+        {searchError && (
+          <p className="mt-2 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white">
+            {searchError}
+          </p>
+        )}
+
+        {/* Active state badge */}
+        {selectedState && !searchError && (
+          <div className="mt-2 inline-flex items-center gap-2 rounded-xl border border-sky-400/30 bg-sky-400/10 px-3 py-1.5 text-xs font-medium text-sky-300">
+            Showing {selectedState}
+            <button
+              type="button"
+              onClick={() => handleStateChange({ target: { value: '' } })}
+              aria-label="Clear state selection"
+              className="rounded-md p-0.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <X size={13} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Map */}
       <div
-        className="relative overflow-hidden rounded-2xl border border-white/10 shadow-card landing-map h-[400px] sm:h-[460px] lg:h-[540px]"
+        className="relative h-[400px] sm:h-[480px] lg:h-[560px]"
         role="region"
         aria-label="Map of Indian states with reported civic issues"
       >
+        {loading && (
+          <div className="absolute inset-0 z-[1000] flex items-center justify-center bg-black/40">
+            <span className="rounded-xl bg-black/70 px-4 py-2 text-sm font-medium text-white">
+              Loading issues…
+            </span>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="absolute inset-x-0 bottom-3 z-[1000] flex justify-center">
+            <p className="rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white shadow-card">
+              {error}
+            </p>
+          </div>
+        )}
+
+        {/* Filter button — on map */}
+        <button
+          type="button"
+          onClick={() => setShowFilters((s) => !s)}
+          aria-label="Filter issues by category"
+          aria-expanded={showFilters}
+          className={`absolute right-3 top-3 z-[1000] flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium backdrop-blur transition-colors ${
+            showFilters
+              ? 'border-sky-400/50 bg-sky-500/20 text-sky-300'
+              : 'border-white/10 bg-[#0b0f22]/90 text-slate-300 hover:text-white'
+          }`}
+        >
+          <Filter size={15} aria-hidden="true" />
+          <span className="hidden sm:inline">Filter</span>
+        </button>
+
+        {/* Filter panel — drops down below filter button on map */}
+        {showFilters && (
+          <div className="absolute right-3 top-14 z-[1000] w-56 rounded-xl border border-white/10 bg-[#0b0f22]/95 p-3 shadow-pop backdrop-blur">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              Filter by category
+            </p>
+            <div className="space-y-1.5">
+              {CATEGORY_FILTERS.map((cat) => {
+                const on = activeFilters.includes(cat);
+                return (
+                  <label
+                    key={cat}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-slate-200 transition-colors hover:bg-white/5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      onChange={() => toggleFilter(cat)}
+                      className="h-4 w-4 cursor-pointer accent-sky-500"
+                    />
+                    {CATEGORY_LABELS[cat] || cat}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <MapContainer
           center={INDIA_CENTER}
           zoom={5}
@@ -304,156 +441,29 @@ export default function LandingMap() {
             />
           )}
         </MapContainer>
+      </div>
 
-        <div className="markercluster-legend right-3 top-3 flex flex-col gap-1.5" role="img" aria-label="State issues legend">
-          <span className="flex items-center gap-2">
-            <span className="state-glow-legend h-3 w-3 rounded-sm border" style={{ borderColor: '#ffffff' }} aria-hidden="true" />
+      {/* Bottom bar: legend + report link */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className="state-glow-legend h-2.5 w-2.5 rounded-sm border" style={{ borderColor: '#ffffff' }} aria-hidden="true" />
             Glowing now
           </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-sm border" style={{ background: accentColor, borderColor: accentColor, opacity: 0.4 }} aria-hidden="true" />
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border" style={{ background: accentColor, borderColor: accentColor, opacity: 0.4 }} aria-hidden="true" />
             Issues reported
           </span>
-          <span className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-sm border border-slate-600 bg-slate-700" aria-hidden="true" />
-            No issues reported
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm border border-slate-600 bg-slate-700" aria-hidden="true" />
+            No issues
           </span>
         </div>
-
-        {loading && (
-          <div className="pointer-events-none absolute inset-0 z-[1000] flex items-center justify-center">
-            <span className="rounded-xl bg-black/60 px-4 py-2 text-sm font-medium text-white backdrop-blur">
-              Loading issues…
-            </span>
-          </div>
-        )}
-
-        {error && !loading && (
-          <p className="absolute bottom-3 left-1/2 z-[1000] -translate-x-1/2 rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white shadow-card">
-            {error}
-          </p>
-        )}
-
-        <form onSubmit={handleSearch} className="absolute left-3 right-3 top-3 z-[1000] flex items-center gap-2">
-          <select
-            value={selectedState}
-            onChange={handleStateChange}
-            aria-label="Select state"
-            className="w-40 shrink-0 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-2.5 py-2 text-sm font-medium text-slate-200 backdrop-blur focus:outline-none focus:border-sky-400/50 sm:w-48"
-          >
-            <option value="">All India</option>
-            {INDIAN_STATES.map((s) => (
-              <option key={s.state} value={s.state}>{s.state}</option>
-            ))}
-          </select>
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 shadow-card backdrop-blur">
-            <Search size={15} className="shrink-0 text-slate-400" aria-hidden="true" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search a location…"
-              aria-label="Search location"
-              className="w-full min-w-0 bg-transparent text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={searching || !query.trim()}
-              className="shrink-0 rounded-lg bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white transition-colors hover:bg-sky-400 disabled:opacity-60"
-            >
-              {searching ? '…' : 'Search'}
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowFilters((s) => !s)}
-            aria-label="Filter issues by category"
-            aria-expanded={showFilters}
-            className={`shrink-0 rounded-xl border px-3 py-2 text-sm font-medium backdrop-blur transition-colors ${
-              showFilters
-                ? 'border-sky-400/50 bg-sky-500/20 text-sky-300'
-                : 'border-white/10 bg-[#0b0f22]/90 text-slate-300 hover:text-white'
-            }`}
-          >
-            <Filter size={15} aria-hidden="true" />
-            <span className="ml-1.5 hidden sm:inline">Filter Issues</span>
-          </button>
-        </form>
-
-        {searchError && !showFilters && (
-          <p className="absolute left-3 top-[4.5rem] z-[1000] rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-medium text-white shadow-card">
-            {searchError}
-          </p>
-        )}
-
-        {selectedState && !showFilters && !searchError && (
-          <div className="absolute right-3 top-[8.5rem] z-[1000] flex items-center gap-2 rounded-xl border border-white/10 bg-[#0b0f22]/90 px-3 py-2 text-xs font-medium text-sky-300 shadow-card backdrop-blur">
-            <span>Showing {selectedState}</span>
-            <button
-              type="button"
-              onClick={() => handleStateChange({ target: { value: '' } })}
-              aria-label="Clear state selection"
-              className="rounded-md p-0.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              <X size={13} aria-hidden="true" />
-            </button>
-          </div>
-        )}
-
-        {showFilters && (
-          <div className="absolute left-3 top-[4.5rem] z-[1000] w-60 rounded-xl border border-white/10 bg-[#0b0f22]/95 p-3 shadow-pop backdrop-blur">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Filter issues
-            </p>
-            <div className="space-y-1.5">
-              {CATEGORY_FILTERS.map((cat) => {
-                const on = activeFilters.includes(cat);
-                return (
-                  <label
-                    key={cat}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm text-slate-200 transition-colors hover:bg-white/5"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={on}
-                      onChange={() => toggleFilter(cat)}
-                      className="h-4 w-4 cursor-pointer accent-sky-500"
-                    />
-                    {CATEGORY_LABELS[cat] || cat}
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        <div className="absolute bottom-3 left-3 z-[1000] flex flex-col gap-2">
-          <p className="rounded-xl border border-white/10 bg-[#0b0f22]/85 px-3 py-2 text-xs text-slate-300 backdrop-blur">
-            <span className="font-semibold text-white">{numReported}</span> of{' '}
-            <span className="font-semibold text-white">{numStates || '—'}</span> states with reported issues
-          </p>
-          <button type="button" onClick={handleLocate} disabled={locating} aria-label="Locate me" className={controlClass}>
-            <LocateFixed size={15} aria-hidden="true" />
-            {locating ? 'Locating…' : 'Locate Me'}
-          </button>
-          <button
-            type="button"
-            onClick={() => setLayer((l) => (l === 'street' ? 'dark' : 'street'))}
-            aria-label={`Switch to ${layer === 'street' ? 'dark' : 'street'} map layer`}
-            aria-pressed={layer === 'street'}
-            className={controlClass}
-          >
-            <Layers size={15} aria-hidden="true" />
-            {layer === 'street' ? 'Dark Map' : 'Street Map'}
-          </button>
-        </div>
-
         <Link
-          to="/report"
-          className="absolute bottom-3 right-3 z-[1000] flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:bg-sky-400 hover:shadow-pop"
+          to="/community"
+          className="text-xs font-semibold text-sky-400 transition-colors hover:text-sky-300"
         >
-          <Plus size={16} aria-hidden="true" />
-          Report Issue
+          Open Full Map →
         </Link>
       </div>
     </div>

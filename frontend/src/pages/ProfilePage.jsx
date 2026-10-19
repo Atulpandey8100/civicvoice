@@ -11,8 +11,26 @@ import { INDIAN_STATES, districtsOf } from '../data/india';
 
 const ROLE_LABELS = { resident: 'Resident', official: 'Official', admin: 'Admin' };
 
-const NAME_REGEX = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+const NAME_REGEX = /^[A-Za-z]+$/;
 const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+
+const COUNTRY_CODES = [
+  { code: '+91', label: 'India (+91)' },
+  { code: '+1', label: 'USA (+1)' },
+  { code: '+44', label: 'UK (+44)' },
+  { code: '+61', label: 'Australia (+61)' },
+  { code: '+971', label: 'UAE (+971)' },
+  { code: '+966', label: 'Saudi Arabia (+966)' },
+  { code: '+65', label: 'Singapore (+65)' },
+  { code: '+81', label: 'Japan (+81)' },
+  { code: '+49', label: 'Germany (+49)' },
+  { code: '+33', label: 'France (+33)' },
+  { code: '+234', label: 'Nigeria (+234)' },
+  { code: '+27', label: 'South Africa (+27)' },
+  { code: '+64', label: 'New Zealand (+64)' },
+  { code: '+60', label: 'Malaysia (+60)' },
+  { code: '+66', label: 'Thailand (+66)' }
+];
 
 export default function ProfilePage() {
   const { user, logout, updateUser } = useAuth();
@@ -24,7 +42,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
+    middleName: user?.middleName || '',
     lastName: user?.lastName || '',
+    countryCode: user?.countryCode || '+91',
     mobile: user?.mobile || '',
     address: user?.address?.street || '',
     pincode: user?.address?.pincode || '',
@@ -49,7 +69,9 @@ export default function ProfilePage() {
         updateUser(data.user);
         setForm({
           firstName: data.user.firstName || '',
+          middleName: data.user.middleName || '',
           lastName: data.user.lastName || '',
+          countryCode: data.user.countryCode || '+91',
           mobile: data.user.mobile || '',
           address: data.user.address?.street || '',
           pincode: data.user.address?.pincode || '',
@@ -84,7 +106,9 @@ export default function ProfilePage() {
   const startEdit = () => {
     setForm({
       firstName: user?.firstName || '',
+      middleName: user?.middleName || '',
       lastName: user?.lastName || '',
+      countryCode: user?.countryCode || '+91',
       mobile: user?.mobile || '',
       address: user?.address?.street || '',
       pincode: user?.address?.pincode || '',
@@ -97,11 +121,15 @@ export default function ProfilePage() {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     if (!NAME_REGEX.test(form.firstName.trim())) {
-      toast({ variant: 'error', title: 'Invalid first name', description: 'Names can only contain letters and spaces.' });
+      toast({ variant: 'error', title: 'Invalid first name', description: 'Names can only contain letters.' });
+      return;
+    }
+    if (form.middleName.trim() && !NAME_REGEX.test(form.middleName.trim())) {
+      toast({ variant: 'error', title: 'Invalid middle name', description: 'Names can only contain letters.' });
       return;
     }
     if (!NAME_REGEX.test(form.lastName.trim())) {
-      toast({ variant: 'error', title: 'Invalid last name', description: 'Names can only contain letters and spaces.' });
+      toast({ variant: 'error', title: 'Invalid last name', description: 'Names can only contain letters.' });
       return;
     }
     if (form.pincode && !PINCODE_REGEX.test(form.pincode)) {
@@ -114,7 +142,9 @@ export default function ProfilePage() {
       updateUser(data.user);
       setForm({
         firstName: data.user.firstName || '',
+        middleName: data.user.middleName || '',
         lastName: data.user.lastName || '',
+        countryCode: data.user.countryCode || '+91',
         mobile: data.user.mobile || '',
         address: data.user.address?.street || '',
         pincode: data.user.address?.pincode || '',
@@ -255,7 +285,7 @@ export default function ProfilePage() {
         <h2 className="font-display text-lg font-semibold text-ink">Profile Details</h2>
         {editing ? (
           <form onSubmit={handleSaveProfile} className="mt-4 space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-3">
               <div className="form-group">
                 <label htmlFor="firstName">First Name</label>
                 <input
@@ -264,6 +294,15 @@ export default function ProfilePage() {
                   value={form.firstName}
                   onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                   required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="middleName">Middle Name <span className="text-ink-faint">(optional)</span></label>
+                <input
+                  id="middleName"
+                  type="text"
+                  value={form.middleName}
+                  onChange={(e) => setForm({ ...form, middleName: e.target.value })}
                 />
               </div>
               <div className="form-group">
@@ -279,15 +318,28 @@ export default function ProfilePage() {
             </div>
             <div className="form-group">
               <label htmlFor="mobile">Mobile Number</label>
-              <input
-                id="mobile"
-                type="text"
-                inputMode="numeric"
-                maxLength={10}
-                value={form.mobile}
-                onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '') })}
-                required
-              />
+              <div className="flex gap-2">
+                <select
+                  id="countryCode"
+                  value={form.countryCode}
+                  onChange={(e) => setForm({ ...form, countryCode: e.target.value })}
+                  className="w-36 shrink-0"
+                >
+                  {COUNTRY_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>{c.label}</option>
+                  ))}
+                </select>
+                <input
+                  id="mobile"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={15}
+                  value={form.mobile}
+                  onChange={(e) => setForm({ ...form, mobile: e.target.value.replace(/\D/g, '') })}
+                  className="min-w-0 flex-1"
+                  required
+                />
+              </div>
             </div>
             <div className="form-group">
               <label htmlFor="address">Address</label>
@@ -355,6 +407,10 @@ export default function ProfilePage() {
               <dd className="mt-0.5 text-sm text-ink">{user.firstName || '—'}</dd>
             </div>
             <div>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Middle Name</dt>
+              <dd className="mt-0.5 text-sm text-ink">{user.middleName || '—'}</dd>
+            </div>
+            <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Last Name</dt>
               <dd className="mt-0.5 text-sm text-ink">{user.lastName || '—'}</dd>
             </div>
@@ -364,7 +420,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Mobile</dt>
-              <dd className="mt-0.5 text-sm text-ink">{user.mobile || '—'}</dd>
+              <dd className="mt-0.5 text-sm text-ink">{user.countryCode} {user.mobile || '—'}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Address</dt>

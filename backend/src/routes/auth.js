@@ -38,7 +38,7 @@ const otpLimiter = rateLimit({
 
 const ALLOWED_ROLES = ['resident'];
 
-const NAME_REGEX = /^[A-Za-z]+(?:[ ]+[A-Za-z]+)*$/;
+const NAME_REGEX = /^[A-Za-z]+$/;
 const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
 
 const isValidName = (value) => NAME_REGEX.test(value);
@@ -185,9 +185,11 @@ router.post(
   '/register',
   authLimiter,
   [
-    body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters and spaces'),
-    body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters and spaces'),
-    body('mobile').matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit mobile number'),
+    body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
+    body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
+    body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
+    body('countryCode').optional().trim().matches(/^\+\d{1,4}$/).withMessage('Enter a valid country code (e.g. +91)'),
+    body('mobile').matches(/^\d{6,15}$/).withMessage('Enter a valid mobile number'),
     body('email')
       .isEmail()
       .withMessage('A valid email is required')
@@ -209,7 +211,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-      const { firstName, lastName, mobile, email, password, address, pincode, state, district } = req.body;
+      const { firstName, middleName, lastName, countryCode, mobile, email, password, address, pincode, state, district } = req.body;
 
       const otpValid = await verifyOtp(email, 'register', req.body.otp);
       if (!otpValid) {
@@ -219,7 +221,9 @@ router.post(
       const role = 'resident';
       const user = new User({
         firstName,
+        middleName: middleName || '',
         lastName,
+        countryCode: countryCode || '+91',
         mobile,
         email,
         password,
@@ -236,8 +240,10 @@ router.post(
         user: {
           id: user._id,
           firstName: user.firstName,
+          middleName: user.middleName,
           lastName: user.lastName,
           name: user.name,
+          countryCode: user.countryCode,
           mobile: user.mobile,
           email: user.email,
           avatar: user.avatar,
@@ -277,8 +283,10 @@ router.post(
         user: {
           id: user._id,
           firstName: user.firstName,
+          middleName: user.middleName,
           lastName: user.lastName,
           name: user.name,
+          countryCode: user.countryCode,
           mobile: user.mobile,
           email: user.email,
           avatar: user.avatar,
@@ -296,8 +304,10 @@ router.post(
 const sanitizeUser = (user) => ({
   id: user._id,
   firstName: user.firstName,
+  middleName: user.middleName,
   lastName: user.lastName,
   name: user.name,
+  countryCode: user.countryCode,
   mobile: user.mobile,
   email: user.email,
   avatar: user.avatar,
@@ -321,9 +331,11 @@ router.put(
   '/me',
   auth,
   [
-    body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters and spaces'),
-    body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters and spaces'),
-    body('mobile').optional().matches(/^[6-9]\d{9}$/).withMessage('Enter a valid 10-digit mobile number'),
+    body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
+    body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
+    body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
+    body('countryCode').optional().trim().matches(/^\+\d{1,4}$/).withMessage('Enter a valid country code (e.g. +91)'),
+    body('mobile').optional().matches(/^\d{6,15}$/).withMessage('Enter a valid mobile number'),
     body('address').optional({ values: 'falsy' }).trim().isLength({ max: 200 }).withMessage('Address must be under 200 characters'),
     body('pincode').optional({ values: 'falsy' }).trim().matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
     body('state').optional().trim().notEmpty().withMessage('Please select your state'),
@@ -335,10 +347,12 @@ router.put(
       const user = await User.findById(req.userId);
       if (!user) return res.status(404).json({ error: 'User not found' });
 
-      const { firstName, lastName, mobile, address, pincode, state, district } = req.body;
+      const { firstName, middleName, lastName, countryCode, mobile, address, pincode, state, district } = req.body;
 
       if (firstName !== undefined) user.firstName = firstName;
+      if (middleName !== undefined) user.middleName = middleName;
       if (lastName !== undefined) user.lastName = lastName;
+      if (countryCode !== undefined) user.countryCode = countryCode;
       if (mobile !== undefined) user.mobile = mobile;
       if (address !== undefined || pincode !== undefined || state !== undefined || district !== undefined) {
         user.address = {
