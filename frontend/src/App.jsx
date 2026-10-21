@@ -26,6 +26,7 @@ import ContactPage from './pages/ContactPage';
 import HelpPage from './pages/HelpPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LandingPage from './pages/LandingPage';
+import InstallPWA from './components/InstallPWA';
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -76,6 +77,7 @@ function App() {
             <div className="h-8 sm:h-12" aria-hidden="true" />
             <Footer />
             <BottomNav />
+            <InstallPWA />
           </div>
         </BrowserRouter>
       </ToastProvider>

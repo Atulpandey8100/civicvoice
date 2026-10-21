@@ -1,23 +1,23 @@
-import express from 'express';
-import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import multer from 'multer';
-import rateLimit from 'express-rate-limit';
-import { body } from 'express-validator';
-import User from '../models/User.js';
-import Otp from '../models/Otp.js';
-import { auth } from '../middleware/auth.js';
-import { validate } from '../utils/validate.js';
-import { sendOtp } from '../utils/mailer.js';
-import { saveUpload, imageFileFilter } from '../utils/uploads.js';
+import express from "express";
+import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import multer from "multer";
+import rateLimit from "express-rate-limit";
+import { body } from "express-validator";
+import User from "../models/User.js";
+import Otp from "../models/Otp.js";
+import { auth } from "../middleware/auth.js";
+import { validate } from "../utils/validate.js";
+import { sendOtp } from "../utils/mailer.js";
+import { saveUpload, imageFileFilter } from "../utils/uploads.js";
 
 const router = express.Router();
 
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: imageFileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 const authLimiter = rateLimit({
@@ -25,7 +25,7 @@ const authLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many attempts. Please try again later.' }
+  message: { error: "Too many attempts. Please try again later." },
 });
 
 const otpLimiter = rateLimit({
@@ -33,10 +33,10 @@ const otpLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many attempts. Please try again later.' }
+  message: { error: "Too many attempts. Please try again later." },
 });
 
-const ALLOWED_ROLES = ['resident'];
+const ALLOWED_ROLES = ["resident"];
 
 const NAME_REGEX = /^[A-Za-z]+$/;
 const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
@@ -52,7 +52,7 @@ const createOtp = async (email, purpose) => {
     email,
     purpose,
     otp: await bcrypt.hash(otp, 10),
-    expiresAt: new Date(Date.now() + OTP_VALID_MS)
+    expiresAt: new Date(Date.now() + OTP_VALID_MS),
   });
   return otp;
 };
@@ -61,7 +61,7 @@ const verifyOtp = async (email, purpose, otp) => {
   const record = await Otp.findOne({
     email,
     purpose,
-    expiresAt: { $gt: new Date() }
+    expiresAt: { $gt: new Date() },
   });
   if (!record) return false;
   return bcrypt.compare(otp, record.otp);
@@ -72,16 +72,26 @@ const clearOtp = async (email, purpose) => {
 };
 
 const verifyOtpForUser = async (user, otp) => {
-  if (!user || !user.otp || !user.otpExpires || new Date(user.otpExpires) < Date.now()) {
+  if (
+    !user ||
+    !user.otp ||
+    !user.otpExpires ||
+    new Date(user.otpExpires) < Date.now()
+  ) {
     return false;
   }
   return bcrypt.compare(otp, user.otp);
 };
 
 router.post(
-  '/forgot-password',
+  "/forgot-password",
   otpLimiter,
-  [body('email').isEmail().withMessage('A valid email is required').normalizeEmail()],
+  [
+    body("email")
+      .isEmail()
+      .withMessage("A valid email is required")
+      .normalizeEmail(),
+  ],
   validate,
   async (req, res) => {
     try {
@@ -93,19 +103,26 @@ router.post(
         await user.save();
         await sendOtp(user.email, otp);
       }
-      res.json({ message: 'If an account exists with this email, an OTP has been sent.' });
+      res.json({
+        message: "If an account exists with this email, an OTP has been sent.",
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
 router.post(
-  '/verify-otp',
+  "/verify-otp",
   otpLimiter,
   [
-    body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
-    body('otp').matches(/^\d{6}$/).withMessage('Enter the 6-digit OTP')
+    body("email")
+      .isEmail()
+      .withMessage("A valid email is required")
+      .normalizeEmail(),
+    body("otp")
+      .matches(/^\d{6}$/)
+      .withMessage("Enter the 6-digit OTP"),
   ],
   validate,
   async (req, res) => {
@@ -113,25 +130,44 @@ router.post(
       const user = await User.findOne({ email: req.body.email });
       const valid = await verifyOtpForUser(user, req.body.otp);
       if (!valid) {
-        return res.status(400).json({ error: 'OTP is invalid or has expired. Please request a new OTP.' });
+        return res
+          .status(400)
+          .json({
+            error: "OTP is invalid or has expired. Please request a new OTP.",
+          });
       }
-      res.json({ message: 'OTP verified. You can now set a new password.' });
+      res.json({ message: "OTP verified. You can now set a new password." });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
 router.post(
-  '/reset-password',
+  "/reset-password",
   otpLimiter,
   [
-    body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
-    body('otp').matches(/^\d{6}$/).withMessage('Enter the 6-digit OTP'),
-    body('password')
-      .isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
-      .withMessage('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character'),
-    body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match')
+    body("email")
+      .isEmail()
+      .withMessage("A valid email is required")
+      .normalizeEmail(),
+    body("otp")
+      .matches(/^\d{6}$/)
+      .withMessage("Enter the 6-digit OTP"),
+    body("password")
+      .isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1,
+      })
+      .withMessage(
+        "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character",
+      ),
+    body("confirmPassword")
+      .custom((value, { req }) => value === req.body.password)
+      .withMessage("Passwords do not match"),
   ],
   validate,
   async (req, res) => {
@@ -139,30 +175,35 @@ router.post(
       const user = await User.findOne({ email: req.body.email });
       const valid = await verifyOtpForUser(user, req.body.otp);
       if (!valid) {
-        return res.status(400).json({ error: 'OTP is invalid or has expired. Please request a new OTP.' });
+        return res
+          .status(400)
+          .json({
+            error: "OTP is invalid or has expired. Please request a new OTP.",
+          });
       }
       user.password = req.body.password;
       user.otp = null;
       user.otpExpires = null;
       await user.save();
-      res.json({ message: 'Password updated. You can now log in with your new password.' });
+      res.json({
+        message: "Password updated. You can now log in with your new password.",
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
-
 router.post(
-  '/send-register-otp',
+  "/send-register-otp",
   otpLimiter,
   [
-    body('email')
+    body("email")
       .isEmail()
-      .withMessage('A valid email is required')
+      .withMessage("A valid email is required")
       .custom((value) => /@gmail\.com$/i.test(value))
-      .withMessage('Email must end with @gmail.com')
-      .normalizeEmail()
+      .withMessage("Email must end with @gmail.com")
+      .normalizeEmail(),
   ],
   validate,
   async (req, res) => {
@@ -170,55 +211,127 @@ router.post(
       const email = req.body.email;
       const exists = await User.findOne({ email });
       if (exists) {
-        return res.status(400).json({ error: 'An account with this email already exists' });
+        return res
+          .status(400)
+          .json({ error: "An account with this email already exists" });
       }
-      const otp = await createOtp(email, 'register');
+      const otp = await createOtp(email, "register");
       await sendOtp(email, otp);
-      res.json({ message: 'An OTP has been sent to your email.' });
+      res.json({ message: "An OTP has been sent to your email." });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error("SEND REGISTER OTP ERROR:", err);
+
+      res.status(500).json({
+        error: "Failed to send OTP",
+        message: err.message,
+      });
     }
-  }
+  },
 );
 
 router.post(
-  '/register',
+  "/register",
   authLimiter,
   [
+<<<<<<< HEAD
     body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
     body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
     body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
     body('countryCode').optional().trim().matches(/^\+\d{1,4}$/).withMessage('Enter a valid country code (e.g. +91)'),
     body('mobile').matches(/^\d{6,15}$/).withMessage('Enter a valid mobile number'),
     body('email')
+=======
+    body("firstName")
+      .trim()
+      .isLength({ min: 2, max: 50 })
+      .withMessage("First name must be 2-50 characters")
+      .custom(isValidName)
+      .withMessage("First name can only contain letters and spaces"),
+    body("lastName")
+      .trim()
+      .isLength({ min: 1, max: 50 })
+      .withMessage("Last name must be 1-50 characters")
+      .custom(isValidName)
+      .withMessage("Last name can only contain letters and spaces"),
+    body("mobile")
+      .matches(/^[6-9]\d{9}$/)
+      .withMessage("Enter a valid 10-digit mobile number"),
+    body("email")
+>>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
       .isEmail()
-      .withMessage('A valid email is required')
+      .withMessage("A valid email is required")
       .custom((value) => /@gmail\.com$/i.test(value))
-      .withMessage('Email must end with @gmail.com')
+      .withMessage("Email must end with @gmail.com")
       .normalizeEmail(),
-    body('otp').matches(/^\d{6}$/).withMessage('Enter the 6-digit OTP sent to your email'),
-    body('password')
-      .isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
-      .withMessage('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character'),
-    body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match'),
-    body('address').optional().trim().isLength({ max: 200 }).withMessage('Address must be under 200 characters'),
-    body('pincode').matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
-    body('state').trim().notEmpty().withMessage('Please select your state'),
-    body('district').trim().notEmpty().withMessage('Please select your district'),
-    body('consent').isBoolean().withMessage('Consent is required').custom((value) => value === true).withMessage('You must accept the consent'),
-    body('role').optional().isIn(ALLOWED_ROLES).withMessage('Role must be resident')
+    body("otp")
+      .matches(/^\d{6}$/)
+      .withMessage("Enter the 6-digit OTP sent to your email"),
+    body("password")
+      .isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1,
+      })
+      .withMessage(
+        "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character",
+      ),
+    body("confirmPassword")
+      .custom((value, { req }) => value === req.body.password)
+      .withMessage("Passwords do not match"),
+    body("address")
+      .optional()
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Address must be under 200 characters"),
+    body("pincode")
+      .matches(/^[1-9][0-9]{5}$/)
+      .withMessage("Enter a valid 6-digit Indian pincode"),
+    body("state").trim().notEmpty().withMessage("Please select your state"),
+    body("district")
+      .trim()
+      .notEmpty()
+      .withMessage("Please select your district"),
+    body("consent")
+      .isBoolean()
+      .withMessage("Consent is required")
+      .custom((value) => value === true)
+      .withMessage("You must accept the consent"),
+    body("role")
+      .optional()
+      .isIn(ALLOWED_ROLES)
+      .withMessage("Role must be resident"),
   ],
   validate,
   async (req, res) => {
     try {
+<<<<<<< HEAD
       const { firstName, middleName, lastName, countryCode, mobile, email, password, address, pincode, state, district } = req.body;
+=======
+      const {
+        firstName,
+        lastName,
+        mobile,
+        email,
+        password,
+        address,
+        pincode,
+        state,
+        district,
+      } = req.body;
+>>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
 
-      const otpValid = await verifyOtp(email, 'register', req.body.otp);
+      const otpValid = await verifyOtp(email, "register", req.body.otp);
       if (!otpValid) {
-        return res.status(400).json({ error: 'OTP is invalid or has expired. Please request a new OTP.' });
+        return res
+          .status(400)
+          .json({
+            error: "OTP is invalid or has expired. Please request a new OTP.",
+          });
       }
 
-      const role = 'resident';
+      const role = "resident";
       const user = new User({
         firstName,
         middleName: middleName || '',
@@ -229,12 +342,14 @@ router.post(
         password,
         address: { street: address, pincode, state, district },
         consent: true,
-        role
+        role,
       });
       await user.save();
-      await clearOtp(email, 'register');
+      await clearOtp(email, "register");
 
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
       res.status(201).json({
         token,
         user: {
@@ -249,24 +364,29 @@ router.post(
           avatar: user.avatar,
           address: user.address,
           consent: user.consent,
-          role: user.role
-        }
+          role: user.role,
+        },
       });
     } catch (err) {
       if (err.code === 11000) {
-        return res.status(400).json({ error: 'An account with this email already exists' });
+        return res
+          .status(400)
+          .json({ error: "An account with this email already exists" });
       }
       res.status(400).json({ error: err.message });
     }
-  }
+  },
 );
 
 router.post(
-  '/login',
+  "/login",
   authLimiter,
   [
-    body('email').isEmail().withMessage('A valid email is required').normalizeEmail(),
-    body('password').notEmpty().withMessage('Password is required')
+    body("email")
+      .isEmail()
+      .withMessage("A valid email is required")
+      .normalizeEmail(),
+    body("password").notEmpty().withMessage("Password is required"),
   ],
   validate,
   async (req, res) => {
@@ -274,10 +394,12 @@ router.post(
       const { email, password } = req.body;
       const user = await User.findOne({ email });
       if (!user || !(await user.comparePassword(password))) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
       res.json({
         token,
         user: {
@@ -292,13 +414,13 @@ router.post(
           avatar: user.avatar,
           address: user.address,
           consent: user.consent,
-          role: user.role
-        }
+          role: user.role,
+        },
       });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
 const sanitizeUser = (user) => ({
@@ -314,13 +436,13 @@ const sanitizeUser = (user) => ({
   address: user.address,
   consent: user.consent,
   role: user.role,
-  createdAt: user.createdAt
+  createdAt: user.createdAt,
 });
 
-router.get('/me', auth, async (req, res) => {
+router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
     res.json({ user: sanitizeUser(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -328,9 +450,10 @@ router.get('/me', auth, async (req, res) => {
 });
 
 router.put(
-  '/me',
+  "/me",
   auth,
   [
+<<<<<<< HEAD
     body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
     body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
     body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
@@ -340,26 +463,76 @@ router.put(
     body('pincode').optional({ values: 'falsy' }).trim().matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
     body('state').optional().trim().notEmpty().withMessage('Please select your state'),
     body('district').optional().trim().notEmpty().withMessage('Please select your district')
+=======
+    body("firstName")
+      .optional()
+      .trim()
+      .isLength({ min: 2, max: 50 })
+      .withMessage("First name must be 2-50 characters")
+      .custom(isValidName)
+      .withMessage("First name can only contain letters and spaces"),
+    body("lastName")
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 50 })
+      .withMessage("Last name must be 1-50 characters")
+      .custom(isValidName)
+      .withMessage("Last name can only contain letters and spaces"),
+    body("mobile")
+      .optional()
+      .matches(/^[6-9]\d{9}$/)
+      .withMessage("Enter a valid 10-digit mobile number"),
+    body("address")
+      .optional({ values: "falsy" })
+      .trim()
+      .isLength({ max: 200 })
+      .withMessage("Address must be under 200 characters"),
+    body("pincode")
+      .optional({ values: "falsy" })
+      .trim()
+      .matches(/^[1-9][0-9]{5}$/)
+      .withMessage("Enter a valid 6-digit Indian pincode"),
+    body("state")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Please select your state"),
+    body("district")
+      .optional()
+      .trim()
+      .notEmpty()
+      .withMessage("Please select your district"),
+>>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
   ],
   validate,
   async (req, res) => {
     try {
       const user = await User.findById(req.userId);
-      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (!user) return res.status(404).json({ error: "User not found" });
 
+<<<<<<< HEAD
       const { firstName, middleName, lastName, countryCode, mobile, address, pincode, state, district } = req.body;
+=======
+      const { firstName, lastName, mobile, address, pincode, state, district } =
+        req.body;
+>>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
 
       if (firstName !== undefined) user.firstName = firstName;
       if (middleName !== undefined) user.middleName = middleName;
       if (lastName !== undefined) user.lastName = lastName;
       if (countryCode !== undefined) user.countryCode = countryCode;
       if (mobile !== undefined) user.mobile = mobile;
-      if (address !== undefined || pincode !== undefined || state !== undefined || district !== undefined) {
+      if (
+        address !== undefined ||
+        pincode !== undefined ||
+        state !== undefined ||
+        district !== undefined
+      ) {
         user.address = {
           street: address ? address : user.address?.street,
           pincode: pincode ? pincode : user.address?.pincode,
           state: state !== undefined ? state : user.address?.state,
-          district: district !== undefined ? district : user.address?.district
+          district: district !== undefined ? district : user.address?.district,
         };
       }
 
@@ -368,17 +541,17 @@ router.put(
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
-router.post('/avatar', auth, upload.single('file'), async (req, res) => {
+router.post("/avatar", auth, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: "No file uploaded" });
     }
 
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     user.avatar = await saveUpload(req.file);
     await user.save();
@@ -388,10 +561,10 @@ router.post('/avatar', auth, upload.single('file'), async (req, res) => {
   }
 });
 
-router.delete('/avatar', auth, async (req, res) => {
+router.delete("/avatar", auth, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) return res.status(404).json({ error: "User not found" });
 
     user.avatar = null;
     await user.save();
@@ -401,51 +574,74 @@ router.delete('/avatar', auth, async (req, res) => {
   }
 });
 
-router.post('/send-password-otp', auth, otpLimiter, async (req, res) => {
+router.post("/send-password-otp", auth, otpLimiter, async (req, res) => {
   try {
     const user = await User.findById(req.userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    const otp = await createOtp(user.email, 'password-change');
+    if (!user) return res.status(404).json({ error: "User not found" });
+    const otp = await createOtp(user.email, "password-change");
     await sendOtp(user.email, otp);
-    res.json({ message: 'An OTP has been sent to your email.' });
+    res.json({ message: "An OTP has been sent to your email." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 router.put(
-  '/password',
+  "/password",
   auth,
   [
-    body('currentPassword').notEmpty().withMessage('Current password is required'),
-    body('otp').matches(/^\d{6}$/).withMessage('Enter the 6-digit OTP sent to your email'),
-    body('newPassword')
-      .isStrongPassword({ minLength: 8, minLowercase: 1, minUppercase: 1, minNumbers: 1, minSymbols: 1 })
-      .withMessage('Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character'),
-    body('confirmPassword').custom((value, { req }) => value === req.body.newPassword).withMessage('Passwords do not match')
+    body("currentPassword")
+      .notEmpty()
+      .withMessage("Current password is required"),
+    body("otp")
+      .matches(/^\d{6}$/)
+      .withMessage("Enter the 6-digit OTP sent to your email"),
+    body("newPassword")
+      .isStrongPassword({
+        minLength: 8,
+        minLowercase: 1,
+        minUppercase: 1,
+        minNumbers: 1,
+        minSymbols: 1,
+      })
+      .withMessage(
+        "Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number and a special character",
+      ),
+    body("confirmPassword")
+      .custom((value, { req }) => value === req.body.newPassword)
+      .withMessage("Passwords do not match"),
   ],
   validate,
   async (req, res) => {
     try {
       const user = await User.findById(req.userId);
-      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (!user) return res.status(404).json({ error: "User not found" });
 
       const valid = await user.comparePassword(req.body.currentPassword);
-      if (!valid) return res.status(400).json({ error: 'Current password is incorrect' });
+      if (!valid)
+        return res.status(400).json({ error: "Current password is incorrect" });
 
-      const otpValid = await verifyOtp(user.email, 'password-change', req.body.otp);
+      const otpValid = await verifyOtp(
+        user.email,
+        "password-change",
+        req.body.otp,
+      );
       if (!otpValid) {
-        return res.status(400).json({ error: 'OTP is invalid or has expired. Please request a new OTP.' });
+        return res
+          .status(400)
+          .json({
+            error: "OTP is invalid or has expired. Please request a new OTP.",
+          });
       }
 
       user.password = req.body.newPassword;
       await user.save();
-      await clearOtp(user.email, 'password-change');
-      res.json({ message: 'Password updated successfully' });
+      await clearOtp(user.email, "password-change");
+      res.json({ message: "Password updated successfully" });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
-  }
+  },
 );
 
 export default router;
