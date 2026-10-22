@@ -36,7 +36,8 @@ app.use(
 );
 
 // Middleware
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static uploads
 app.use(
@@ -53,17 +54,31 @@ app.use('/api/contact', contactRoutes);
 app.use('/api', uploadRouter); // Grouped with other routes
 app.use('/api/chat', chatRoutes);
 
-// Serve frontend build in production
+// Serve frontend build in production only if it exists (for monolith deployment)
 const frontendDist = path.join(__dirname, '..', '..', 'frontend', 'dist');
-app.use(express.static(frontendDist));
-
-// SPA fallback - serve index.html for non-API routes
-app.get('*', (req, res) => {
-  if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
-    return res.status(404).json({ error: 'Not found' });
-  }
-  res.sendFile(path.join(frontendDist, 'index.html'));
-});
+try {
+  app.use(express.static(frontendDist));
+  
+  // SPA fallback - serve index.html for non-API routes
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.sendFile(path.join(frontendDist, 'index.html'), (err) => {
+      if (err) {
+        res.status(404).json({ error: 'Not found' });
+      }
+    });
+  });
+} catch (err) {
+  // Frontend not deployed with backend (separate deployments)
+  app.get('*', (req, res) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.status(404).json({ error: 'Not found' });
+  });
+}
 
 // Error handler
 app.use((err, req, res, next) => {
