@@ -26,7 +26,7 @@ const corsOrigins = process.env.CORS_ORIGIN
       .split(',')
       .map((origin) => origin.trim())
       .filter(Boolean)
-  : true;
+  : ['https://civicvoice-12.onrender.com', 'http://localhost:3000'];
 
 app.use(
   cors({
