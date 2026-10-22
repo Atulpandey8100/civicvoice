@@ -46,9 +46,8 @@ router.post(
       const answer = await chatAnswer(req.body.message, { stats, topIssues });
 
       if (!answer) {
-        return res.status(502).json({
-          error: "CivicBot could not respond right now. Please try again in a moment."
-        });
+        const fallback = "I'm having trouble connecting to the AI service right now. Here are some quick tips:\n\n• To report an issue: Sign in → Create Issue → Fill details and pin location\n• To track issues: Visit Explore or your Dashboard\n• To vote/comment: Open any issue and use the vote/comment buttons\n• For help: Check the Help page or Contact us\n\nPlease try again in a moment.";
+        return res.json({ answer: fallback });
       }
 
       res.json({ answer });
