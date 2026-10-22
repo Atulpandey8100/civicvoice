@@ -43,14 +43,19 @@ router.post(
           .select("title category status aiPriority voteCount state")
       ]);
 
-      const answer = await chatAnswer(req.body.message, { stats, topIssues });
+      try {
+        const answer = await chatAnswer(req.body.message, { stats, topIssues });
 
-      if (!answer) {
+        if (!answer) {
+          const fallback = "I'm having trouble connecting to the AI service right now. Here are some quick tips:\n\n• To report an issue: Sign in → Create Issue → Fill details and pin location\n• To track issues: Visit Explore or your Dashboard\n• To vote/comment: Open any issue and use the vote/comment buttons\n• For help: Check the Help page or Contact us\n\nPlease try again in a moment.";
+          return res.json({ answer: fallback });
+        }
+
+        res.json({ answer });
+      } catch (e) {
         const fallback = "I'm having trouble connecting to the AI service right now. Here are some quick tips:\n\n• To report an issue: Sign in → Create Issue → Fill details and pin location\n• To track issues: Visit Explore or your Dashboard\n• To vote/comment: Open any issue and use the vote/comment buttons\n• For help: Check the Help page or Contact us\n\nPlease try again in a moment.";
         return res.json({ answer: fallback });
       }
-
-      res.json({ answer });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
