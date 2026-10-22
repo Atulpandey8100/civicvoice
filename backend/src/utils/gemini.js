@@ -99,9 +99,9 @@ Respond ONLY in JSON format: { "priority": number, "suggestions": ["string", "st
 };
 
 export const chatAnswer = async (question, context = {}) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes('your_')) {
+  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY.includes('your_') || process.env.GEMINI_API_KEY.length < 10) {
     console.warn('Gemini API key is not configured; skipping chatbot.');
-    return null;
+    return "I'm CivicBot! I can help you with reporting issues, tracking status, voting, and navigating CivicVoice. What would you like to know?";
   }
 
   try {
