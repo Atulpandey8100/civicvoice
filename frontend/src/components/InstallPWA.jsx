@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export default function InstallPWA() {
@@ -12,20 +13,23 @@ export default function InstallPWA() {
   const hasMoved = useRef(false);
   const buttonRef = useRef(null);
 
+  // Detect whether the PWA is already installed.
   useEffect(() => {
     const checkInstalled = () => {
-      setInstalled(
+      const standalone =
         window.matchMedia("(display-mode: standalone)").matches ||
-          window.navigator.standalone === true
-      );
+        window.navigator.standalone === true;
+
+      setInstalled(standalone);
     };
 
-    const handlePrompt = (event) => {
+    const handleBeforeInstallPrompt = (event) => {
+      // Keep Chrome's native install dialog available for the button.
       event.preventDefault();
       setInstallPrompt(event);
     };
 
-    const handleInstalled = () => {
+    const handleAppInstalled = () => {
       setInstalled(true);
       setInstallPrompt(null);
       setShowPopup(false);
@@ -34,17 +38,25 @@ export default function InstallPWA() {
     checkInstalled();
 
     const mediaQuery = window.matchMedia("(display-mode: standalone)");
-    window.addEventListener("beforeinstallprompt", handlePrompt);
-    window.addEventListener("appinstalled", handleInstalled);
+
+    window.addEventListener(
+      "beforeinstallprompt",
+      handleBeforeInstallPrompt
+    );
+    window.addEventListener("appinstalled", handleAppInstalled);
     mediaQuery.addEventListener?.("change", checkInstalled);
 
     return () => {
-      window.removeEventListener("beforeinstallprompt", handlePrompt);
-      window.removeEventListener("appinstalled", handleInstalled);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+      window.removeEventListener("appinstalled", handleAppInstalled);
       mediaQuery.removeEventListener?.("change", checkInstalled);
     };
   }, []);
 
+  // Keep the floating button inside the viewport.
   useEffect(() => {
     const keepButtonVisible = () => {
       const button = buttonRef.current;
@@ -63,38 +75,57 @@ export default function InstallPWA() {
     };
 
     window.addEventListener("resize", keepButtonVisible);
-    return () => window.removeEventListener("resize", keepButtonVisible);
+    keepButtonVisible();
+
+    return () => {
+      window.removeEventListener("resize", keepButtonVisible);
+    };
   }, []);
 
+  // Open the native installation dialog when Chrome provides it.
   const installApp = useCallback(async () => {
-    if (!installPrompt) return;
+    if (!installPrompt) {
+      setShowPopup(true);
+      return;
+    }
 
     try {
       const promptEvent = installPrompt;
+
+      // A saved install prompt can only be used once.
       setInstallPrompt(null);
 
       await promptEvent.prompt();
+
       const result = await promptEvent.userChoice;
 
       if (result.outcome === "accepted") {
         setShowPopup(false);
       }
     } catch (error) {
-      console.error("PWA installation failed:", error);
+      console.error("CivicVoice installation failed:", error);
+      setShowPopup(true);
     }
   }, [installPrompt]);
 
+  // Drag handlers.
   const handlePointerDown = (event) => {
-    if (event.button !== 0) return;
+    if (event.pointerType === "mouse" && event.button !== 0) return;
 
     hasMoved.current = false;
+
     dragOffset.current = {
       x: event.clientX - position.x,
       y: event.clientY - position.y,
     };
 
     setDragging(true);
-    event.currentTarget.setPointerCapture(event.pointerId);
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture may not be supported in every environment.
+    }
   };
 
   const handlePointerMove = (event) => {
@@ -114,14 +145,23 @@ export default function InstallPWA() {
     }
 
     setPosition({
-      x: Math.max(0, Math.min(x, window.innerWidth - button.offsetWidth)),
-      y: Math.max(0, Math.min(y, window.innerHeight - button.offsetHeight)),
+      x: Math.max(
+        0,
+        Math.min(x, window.innerWidth - button.offsetWidth)
+      ),
+      y: Math.max(
+        0,
+        Math.min(y, window.innerHeight - button.offsetHeight)
+      ),
     });
   };
 
-  const handlePointerUp = () => setDragging(false);
+  const handlePointerUp = () => {
+    setDragging(false);
+  };
 
   const handleClick = (event) => {
+    // Don't trigger installation after dragging the button.
     if (hasMoved.current) {
       event.preventDefault();
       event.stopPropagation();
@@ -129,28 +169,31 @@ export default function InstallPWA() {
       return;
     }
 
-    if (installPrompt) {
-      void installApp();
-    } else {
-      setShowPopup(true);
-    }
+    void installApp();
   };
 
+  // Close the fallback dialog with Escape.
   useEffect(() => {
     if (!showPopup) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setShowPopup(false);
+      if (event.key === "Escape") {
+        setShowPopup(false);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [showPopup]);
 
   if (installed) return null;
 
   return (
     <>
+      {/* Floating install button */}
       <button
         ref={buttonRef}
         type="button"
@@ -167,6 +210,7 @@ export default function InstallPWA() {
           zIndex: 9999,
           display: "flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 10,
           padding: "12px 18px",
           border: 0,
@@ -177,9 +221,10 @@ export default function InstallPWA() {
           fontWeight: 600,
           fontFamily: "inherit",
           whiteSpace: "nowrap",
-          cursor: dragging ? "grabbing" : "grab",
+          cursor: dragging ? "grabbing" : "pointer",
           touchAction: "none",
           userSelect: "none",
+          WebkitTapHighlightColor: "transparent",
           boxShadow: "0 6px 22px rgba(21,94,239,.3)",
         }}
       >
@@ -187,6 +232,7 @@ export default function InstallPWA() {
         Install CivicVoice
       </button>
 
+      {/* Manual installation fallback */}
       {showPopup && (
         <div
           role="presentation"
@@ -195,7 +241,7 @@ export default function InstallPWA() {
             position: "fixed",
             inset: 0,
             zIndex: 10000,
-            background: "rgba(0,0,0,.58)",
+            background: "rgba(0,0,0,.65)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -212,7 +258,7 @@ export default function InstallPWA() {
             style={{
               position: "relative",
               width: "100%",
-              maxWidth: 380,
+              maxWidth: 400,
               maxHeight: "calc(100dvh - 32px)",
               overflowY: "auto",
               boxSizing: "border-box",
@@ -264,12 +310,21 @@ export default function InstallPWA() {
 
             <h2
               id="install-title"
-              style={{ margin: "0 0 10px", fontSize: 23 }}
+              style={{
+                margin: "0 0 10px",
+                fontSize: 23,
+              }}
             >
               Install CivicVoice
             </h2>
 
-            <p style={{ lineHeight: 1.6, color: "#596579", margin: "0 0 18px" }}>
+            <p
+              style={{
+                lineHeight: 1.6,
+                color: "#596579",
+                margin: "0 0 20px",
+              }}
+            >
               Add CivicVoice to your home screen for quick access
               to community updates and reporting.
             </p>
@@ -286,20 +341,29 @@ export default function InstallPWA() {
                   background: "#155EEF",
                   color: "#fff",
                   fontWeight: 600,
+                  fontSize: 15,
                   cursor: "pointer",
                 }}
               >
                 Install now
               </button>
             ) : (
-              <div style={{ fontSize: 14, lineHeight: 1.7, textAlign: "left" }}>
-                <p style={{ margin: "0 0 10px" }}>
-                  <strong>Android / Desktop:</strong> Open your browser menu
-                  and choose Install app or Add to Home Screen, if available.
+              <div
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  textAlign: "left",
+                }}
+              >
+                <p style={{ margin: "0 0 12px" }}>
+                  <strong>Android / Desktop:</strong> Open Chrome's
+                  menu (⋮) and choose Install app or Add to Home screen,
+                  if available.
                 </p>
+
                 <p style={{ margin: 0 }}>
-                  <strong>iPhone / iPad:</strong> Open this website in Safari,
-                  tap Share, then Add to Home Screen.
+                  <strong>iPhone / iPad:</strong> Open this website in
+                  Safari, tap Share, then Add to Home Screen.
                 </p>
               </div>
             )}
