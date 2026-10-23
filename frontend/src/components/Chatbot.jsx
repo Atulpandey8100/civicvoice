@@ -35,7 +35,7 @@ export default function Chatbot() {
     setSending(true);
     try {
       const { data } = await api.post('/chat', { message: text });
-      setMessages((prev) => [...prev, { role: 'bot', text: data.answer }]);
+      setMessages((prev) => [...prev, { role: 'bot', text: data.answer || 'Sorry, I could not respond right now.' }]);
     } catch (err) {
       setMessages((prev) => [
         ...prev,
