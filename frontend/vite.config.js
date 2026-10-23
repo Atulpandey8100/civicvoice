@@ -16,12 +16,15 @@ export default defineConfig({
         name: 'CivicVoice',
         short_name: 'CivicVoice',
         description: 'Raise your voice. Improve your community.',
+        lang: 'en-IN',
+        dir: 'ltr',
         theme_color: '#0757D5',
         background_color: '#0757D5',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',
         scope: '/',
+        categories: ['social', 'utilities'],
         icons: [
           {
             src: '/pwa-192x192.png',
@@ -44,12 +47,30 @@ export default defineConfig({
         ]
       },
       workbox: {
-        // SPA routing ke liye (React Router etc.)
+        // SPA routing (React Router etc.)
         navigateFallback: '/index.html',
-        // API aur uploads ko service worker cache/fallback se bahar rakho
+        // API aur uploads service worker fallback se bahar
         navigateFallbackDenylist: [/^\/api/, /^\/uploads/],
         globPatterns: ['**/*.{js,css,html,png,svg,ico,webp}'],
-        cleanupOutdatedCaches: true
+        // Bade JS bundle ke liye (default 2 MB hai)
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          // Map ka geojson: pehle cache se, peeche se update
+          {
+            urlPattern: /\.geojson$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'geojson-cache',
+              expiration: { maxEntries: 5, maxAgeSeconds: 60 * 60 * 24 * 30 }
+            }
+          },
+          // API hamesha network se (fresh data)
+          {
+            urlPattern: /^\/api\//,
+            handler: 'NetworkOnly'
+          }
+        ]
       },
       // Dev me test karna ho to true kar do
       devOptions: { enabled: false }

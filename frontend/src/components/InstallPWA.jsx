@@ -1,33 +1,77 @@
-
 import { useCallback, useEffect, useRef, useState } from "react";
+
+const POS_KEY = "civicvoice-install-pos";
+
+const getDefaultPosition = () => ({
+  x: Math.max(0, window.innerWidth - 190),
+  y: Math.max(0, window.innerHeight - 140),
+});
+
+const loadPosition = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POS_KEY));
+    if (saved && typeof saved.x === "number" && typeof saved.y === "number") {
+      return saved;
+    }
+  } catch {
+    // ignore
+  }
+  return getDefaultPosition();
+};
+
+const isIOS = () =>
+  /iphone|ipad|ipod/i.test(window.navigator.userAgent) ||
+  (window.navigator.platform === "MacIntel" &&
+    window.navigator.maxTouchPoints > 1);
+
+function DownloadIcon({ size = 18 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </svg>
+  );
+}
 
 export default function InstallPWA() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [dragging, setDragging] = useState(false);
-
-  const [position, setPosition] = useState({ x: 20, y: 100 });
+  const [dark, setDark] = useState(false);
+  const [position, setPosition] = useState(loadPosition);
 
   const dragOffset = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
   const buttonRef = useRef(null);
 
-  // Detect whether the PWA is already installed.
+  // Install event + installed detection
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(display-mode: standalone)");
+
     const checkInstalled = () => {
       const standalone =
-        window.matchMedia("(display-mode: standalone)").matches ||
-        window.navigator.standalone === true;
-
+        mediaQuery.matches || window.navigator.standalone === true;
       setInstalled(standalone);
     };
 
-    const handleBeforeInstallPrompt = (event) => {
-      // Keep Chrome's native install dialog available for the button.
-      event.preventDefault();
-      setInstallPrompt(event);
-    };
+    // main.jsx me pakda hua event uthao
+    if (window.__deferredInstallPrompt) {
+      setInstallPrompt(window.__deferredInstallPrompt);
+    }
+
+    const handleReady = () => setInstallPrompt(window.__deferredInstallPrompt);
 
     const handleAppInstalled = () => {
       setInstalled(true);
@@ -37,26 +81,18 @@ export default function InstallPWA() {
 
     checkInstalled();
 
-    const mediaQuery = window.matchMedia("(display-mode: standalone)");
-
-    window.addEventListener(
-      "beforeinstallprompt",
-      handleBeforeInstallPrompt
-    );
+    window.addEventListener("pwa-install-ready", handleReady);
     window.addEventListener("appinstalled", handleAppInstalled);
     mediaQuery.addEventListener?.("change", checkInstalled);
 
     return () => {
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handleBeforeInstallPrompt
-      );
+      window.removeEventListener("pwa-install-ready", handleReady);
       window.removeEventListener("appinstalled", handleAppInstalled);
       mediaQuery.removeEventListener?.("change", checkInstalled);
     };
   }, []);
 
-  // Keep the floating button inside the viewport.
+  // Button ko screen ke andar rakho
   useEffect(() => {
     const keepButtonVisible = () => {
       const button = buttonRef.current;
@@ -77,14 +113,13 @@ export default function InstallPWA() {
     window.addEventListener("resize", keepButtonVisible);
     keepButtonVisible();
 
-    return () => {
-      window.removeEventListener("resize", keepButtonVisible);
-    };
-  }, []);
+    return () => window.removeEventListener("resize", keepButtonVisible);
+  }, [installed]);
 
-  // Open the native installation dialog when Chrome provides it.
+  // Native install dialog kholo
   const installApp = useCallback(async () => {
     if (!installPrompt) {
+      setDark(document.documentElement.classList.contains("dark"));
       setShowPopup(true);
       return;
     }
@@ -92,11 +127,11 @@ export default function InstallPWA() {
     try {
       const promptEvent = installPrompt;
 
-      // A saved install prompt can only be used once.
+      // Saved prompt sirf ek baar use hota hai
       setInstallPrompt(null);
+      window.__deferredInstallPrompt = null;
 
       await promptEvent.prompt();
-
       const result = await promptEvent.userChoice;
 
       if (result.outcome === "accepted") {
@@ -104,16 +139,16 @@ export default function InstallPWA() {
       }
     } catch (error) {
       console.error("CivicVoice installation failed:", error);
+      setDark(document.documentElement.classList.contains("dark"));
       setShowPopup(true);
     }
   }, [installPrompt]);
 
-  // Drag handlers.
+  // Drag handlers
   const handlePointerDown = (event) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
 
     hasMoved.current = false;
-
     dragOffset.current = {
       x: event.clientX - position.x,
       y: event.clientY - position.y,
@@ -124,7 +159,7 @@ export default function InstallPWA() {
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
     } catch {
-      // Pointer capture may not be supported in every environment.
+      // ignore
     }
   };
 
@@ -137,31 +172,31 @@ export default function InstallPWA() {
     const x = event.clientX - dragOffset.current.x;
     const y = event.clientY - dragOffset.current.y;
 
-    if (
-      Math.abs(x - position.x) > 3 ||
-      Math.abs(y - position.y) > 3
-    ) {
+    if (Math.abs(x - position.x) > 3 || Math.abs(y - position.y) > 3) {
       hasMoved.current = true;
     }
 
     setPosition({
-      x: Math.max(
-        0,
-        Math.min(x, window.innerWidth - button.offsetWidth)
-      ),
-      y: Math.max(
-        0,
-        Math.min(y, window.innerHeight - button.offsetHeight)
-      ),
+      x: Math.max(0, Math.min(x, window.innerWidth - button.offsetWidth)),
+      y: Math.max(0, Math.min(y, window.innerHeight - button.offsetHeight)),
     });
   };
 
   const handlePointerUp = () => {
+    if (!dragging) return;
     setDragging(false);
+
+    if (hasMoved.current) {
+      try {
+        localStorage.setItem(POS_KEY, JSON.stringify(position));
+      } catch {
+        // ignore
+      }
+    }
   };
 
   const handleClick = (event) => {
-    // Don't trigger installation after dragging the button.
+    // Drag ke baad install trigger na ho
     if (hasMoved.current) {
       event.preventDefault();
       event.stopPropagation();
@@ -172,24 +207,45 @@ export default function InstallPWA() {
     void installApp();
   };
 
-  // Close the fallback dialog with Escape.
+  // Escape se popup band
   useEffect(() => {
     if (!showPopup) return;
 
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        setShowPopup(false);
-      }
+      if (event.key === "Escape") setShowPopup(false);
     };
 
     window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showPopup]);
 
   if (installed) return null;
+
+  const ios = isIOS();
+
+  const theme = dark
+    ? {
+        card: "#171B22",
+        text: "#F1F5F9",
+        muted: "#9AA6B8",
+        iconBg: "#1E2A44",
+        closeBg: "#242B36",
+        closeText: "#CBD5E1",
+        border: "#2E3744",
+        laterText: "#E2E8F0",
+        laterBg: "#171B22",
+      }
+    : {
+        card: "#FFFFFF",
+        text: "#172033",
+        muted: "#596579",
+        iconBg: "#E8F1FF",
+        closeBg: "#F1F5F9",
+        closeText: "#334155",
+        border: "#D8DFEA",
+        laterText: "#263348",
+        laterBg: "#FFFFFF",
+      };
 
   return (
     <>
@@ -211,7 +267,7 @@ export default function InstallPWA() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 10,
+          gap: 8,
           padding: "12px 18px",
           border: 0,
           borderRadius: 999,
@@ -228,11 +284,11 @@ export default function InstallPWA() {
           boxShadow: "0 6px 22px rgba(21,94,239,.3)",
         }}
       >
-        <span aria-hidden="true">⬇</span>
+        <DownloadIcon />
         Install CivicVoice
       </button>
 
-      {/* Manual installation fallback */}
+      {/* Manual install fallback */}
       {showPopup && (
         <div
           role="presentation"
@@ -264,8 +320,8 @@ export default function InstallPWA() {
               boxSizing: "border-box",
               padding: "clamp(20px, 5vw, 28px)",
               borderRadius: 24,
-              background: "#fff",
-              color: "#172033",
+              background: theme.card,
+              color: theme.text,
               textAlign: "center",
               boxShadow: "0 20px 60px rgba(0,0,0,.24)",
             }}
@@ -282,8 +338,8 @@ export default function InstallPWA() {
                 height: 36,
                 border: 0,
                 borderRadius: 999,
-                background: "#F1F5F9",
-                color: "#334155",
+                background: theme.closeBg,
+                color: theme.closeText,
                 fontSize: 22,
                 cursor: "pointer",
               }}
@@ -300,33 +356,26 @@ export default function InstallPWA() {
                 borderRadius: 18,
                 display: "grid",
                 placeItems: "center",
-                background: "#E8F1FF",
+                background: theme.iconBg,
                 color: "#155EEF",
-                fontSize: 28,
               }}
             >
-              ⬇
+              <DownloadIcon size={28} />
             </div>
 
-            <h2
-              id="install-title"
-              style={{
-                margin: "0 0 10px",
-                fontSize: 23,
-              }}
-            >
+            <h2 id="install-title" style={{ margin: "0 0 10px", fontSize: 23 }}>
               Install CivicVoice
             </h2>
 
             <p
               style={{
                 lineHeight: 1.6,
-                color: "#596579",
+                color: theme.muted,
                 margin: "0 0 20px",
               }}
             >
-              Add CivicVoice to your home screen for quick access
-              to community updates and reporting.
+              Add CivicVoice to your home screen for quick access to community
+              updates and reporting.
             </p>
 
             {installPrompt ? (
@@ -353,18 +402,37 @@ export default function InstallPWA() {
                   fontSize: 14,
                   lineHeight: 1.7,
                   textAlign: "left",
+                  color: theme.text,
                 }}
               >
-                <p style={{ margin: "0 0 12px" }}>
-                  <strong>Android / Desktop:</strong> Open Chrome's
-                  menu (⋮) and choose Install app or Add to Home screen,
-                  if available.
-                </p>
-
-                <p style={{ margin: 0 }}>
-                  <strong>iPhone / iPad:</strong> Open this website in
-                  Safari, tap Share, then Add to Home Screen.
-                </p>
+                {ios ? (
+                  <ol style={{ margin: 0, paddingLeft: 20 }}>
+                    <li>Is website ko <strong>Safari</strong> me kholo.</li>
+                    <li>Neeche <strong>Share</strong> button dabao.</li>
+                    <li><strong>Add to Home Screen</strong> chuno.</li>
+                    <li><strong>Add</strong> dabao.</li>
+                  </ol>
+                ) : (
+                  <>
+                    <ol style={{ margin: "0 0 12px", paddingLeft: 20 }}>
+                      <li>
+                        <strong>Chrome</strong> me site kholo (WhatsApp /
+                        Instagram ke andar nahi).
+                      </li>
+                      <li>
+                        Upar menu <strong>(⋮)</strong> dabao.
+                      </li>
+                      <li>
+                        <strong>Install app</strong> ya{" "}
+                        <strong>Add to Home screen</strong> chuno.
+                      </li>
+                    </ol>
+                    <p style={{ margin: 0, color: theme.muted, fontSize: 13 }}>
+                      Agar option nahi dikh raha, page ek baar reload karke
+                      dobara try karo.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
@@ -375,10 +443,10 @@ export default function InstallPWA() {
                 width: "100%",
                 marginTop: 14,
                 padding: 13,
-                border: "1px solid #D8DFEA",
+                border: `1px solid ${theme.border}`,
                 borderRadius: 12,
-                background: "#fff",
-                color: "#263348",
+                background: theme.laterBg,
+                color: theme.laterText,
                 fontWeight: 500,
                 cursor: "pointer",
               }}
