@@ -233,31 +233,12 @@ router.post(
   "/register",
   authLimiter,
   [
-<<<<<<< HEAD
     body('firstName').trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
     body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
     body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
     body('countryCode').optional().trim().matches(/^\+\d{1,4}$/).withMessage('Enter a valid country code (e.g. +91)'),
     body('mobile').matches(/^\d{6,15}$/).withMessage('Enter a valid mobile number'),
     body('email')
-=======
-    body("firstName")
-      .trim()
-      .isLength({ min: 2, max: 50 })
-      .withMessage("First name must be 2-50 characters")
-      .custom(isValidName)
-      .withMessage("First name can only contain letters and spaces"),
-    body("lastName")
-      .trim()
-      .isLength({ min: 1, max: 50 })
-      .withMessage("Last name must be 1-50 characters")
-      .custom(isValidName)
-      .withMessage("Last name can only contain letters and spaces"),
-    body("mobile")
-      .matches(/^[6-9]\d{9}$/)
-      .withMessage("Enter a valid 10-digit mobile number"),
-    body("email")
->>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
       .isEmail()
       .withMessage("A valid email is required")
       .custom((value) => /@gmail\.com$/i.test(value))
@@ -306,21 +287,7 @@ router.post(
   validate,
   async (req, res) => {
     try {
-<<<<<<< HEAD
       const { firstName, middleName, lastName, countryCode, mobile, email, password, address, pincode, state, district } = req.body;
-=======
-      const {
-        firstName,
-        lastName,
-        mobile,
-        email,
-        password,
-        address,
-        pincode,
-        state,
-        district,
-      } = req.body;
->>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
 
       const otpValid = await verifyOtp(email, "register", req.body.otp);
       if (!otpValid) {
@@ -453,7 +420,6 @@ router.put(
   "/me",
   auth,
   [
-<<<<<<< HEAD
     body('firstName').optional().trim().isLength({ min: 2, max: 50 }).withMessage('First name must be 2-50 characters').custom(isValidName).withMessage('First name can only contain letters'),
     body('middleName').optional({ values: 'falsy' }).trim().isLength({ max: 50 }).withMessage('Middle name must be under 50 characters').custom(isValidName).withMessage('Middle name can only contain letters'),
     body('lastName').optional().trim().isLength({ min: 1, max: 50 }).withMessage('Last name must be 1-50 characters').custom(isValidName).withMessage('Last name can only contain letters'),
@@ -463,46 +429,6 @@ router.put(
     body('pincode').optional({ values: 'falsy' }).trim().matches(/^[1-9][0-9]{5}$/).withMessage('Enter a valid 6-digit Indian pincode'),
     body('state').optional().trim().notEmpty().withMessage('Please select your state'),
     body('district').optional().trim().notEmpty().withMessage('Please select your district')
-=======
-    body("firstName")
-      .optional()
-      .trim()
-      .isLength({ min: 2, max: 50 })
-      .withMessage("First name must be 2-50 characters")
-      .custom(isValidName)
-      .withMessage("First name can only contain letters and spaces"),
-    body("lastName")
-      .optional()
-      .trim()
-      .isLength({ min: 1, max: 50 })
-      .withMessage("Last name must be 1-50 characters")
-      .custom(isValidName)
-      .withMessage("Last name can only contain letters and spaces"),
-    body("mobile")
-      .optional()
-      .matches(/^[6-9]\d{9}$/)
-      .withMessage("Enter a valid 10-digit mobile number"),
-    body("address")
-      .optional({ values: "falsy" })
-      .trim()
-      .isLength({ max: 200 })
-      .withMessage("Address must be under 200 characters"),
-    body("pincode")
-      .optional({ values: "falsy" })
-      .trim()
-      .matches(/^[1-9][0-9]{5}$/)
-      .withMessage("Enter a valid 6-digit Indian pincode"),
-    body("state")
-      .optional()
-      .trim()
-      .notEmpty()
-      .withMessage("Please select your state"),
-    body("district")
-      .optional()
-      .trim()
-      .notEmpty()
-      .withMessage("Please select your district"),
->>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
   ],
   validate,
   async (req, res) => {
@@ -510,12 +436,7 @@ router.put(
       const user = await User.findById(req.userId);
       if (!user) return res.status(404).json({ error: "User not found" });
 
-<<<<<<< HEAD
       const { firstName, middleName, lastName, countryCode, mobile, address, pincode, state, district } = req.body;
-=======
-      const { firstName, lastName, mobile, address, pincode, state, district } =
-        req.body;
->>>>>>> 4c7d6ed (Add CivicVoice PWA install button and icons)
 
       if (firstName !== undefined) user.firstName = firstName;
       if (middleName !== undefined) user.middleName = middleName;
