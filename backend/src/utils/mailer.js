@@ -19,10 +19,14 @@ const transport = nodemailer.createTransport({
 });
 
 async function sendViaBrevoApi(email, otp) {
-  if (!brevoApiKey) return false;
+  if (!brevoApiKey) {
+    console.log('BREVO API: no API key configured');
+    return false;
+  }
   try {
     const fromEmail = process.env.MAIL_FROM || process.env.SMTP_USER || 'noreply@civicvoice.local';
     const fromName = process.env.MAIL_FROM_NAME || 'CivicVoice';
+    console.log('BREVO API: sending to', email, 'from', fromEmail);
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -45,11 +49,12 @@ async function sendViaBrevoApi(email, otp) {
         textContent: `Your CivicVoice OTP is ${otp}. It is valid for 10 minutes. If you did not request this, you can safely ignore this email.`
       })
     });
+    const text = await res.text();
     if (!res.ok) {
-      const text = await res.text();
       console.error('BREVO API ERROR:', res.status, text);
       return false;
     }
+    console.log('BREVO API SUCCESS:', res.status, text);
     return true;
   } catch (err) {
     console.error('BREVO API ERROR:', err.message);
