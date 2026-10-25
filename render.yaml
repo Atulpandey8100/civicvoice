@@ -15,4 +15,10 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: CORS_ORIGIN
-        value: https://civicvoice-ngc5.onrender.com
+        value: https://civicvoice-12.onrender.com
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: CivicVoice

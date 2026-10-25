@@ -101,7 +101,10 @@ router.post(
         user.otp = await bcrypt.hash(otp, 10);
         user.otpExpires = new Date(Date.now() + OTP_VALID_MS);
         await user.save();
-        sendOtp(user.email, otp).catch((e) => console.error('MAIL ERROR:', e.message));
+        const result = await sendOtp(user.email, otp);
+        if (!result.sent && !result.dev) {
+          console.error("FORGOT PASSWORD OTP EMAIL FAILED:", result.error);
+        }
       }
       res.json({
         message: "If an account exists with this email, an OTP has been sent.",
@@ -216,7 +219,13 @@ router.post(
           .json({ error: "An account with this email already exists" });
       }
       const otp = await createOtp(email, "register");
-      sendOtp(email, otp).catch((err) => console.error("SEND REGISTER OTP EMAIL ERROR:", err.message));
+      const result = await sendOtp(email, otp);
+      if (!result.sent && !result.dev) {
+        console.error("SEND REGISTER OTP EMAIL FAILED:", result.error);
+        return res.status(502).json({
+          error: "Could not send the OTP email right now. Please try again later.",
+        });
+      }
       res.json({ message: "An OTP has been sent to your email." });
     } catch (err) {
       console.error("SEND REGISTER OTP ERROR:", err);
@@ -500,7 +509,13 @@ router.post("/send-password-otp", auth, otpLimiter, async (req, res) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ error: "User not found" });
     const otp = await createOtp(user.email, "password-change");
-    sendOtp(user.email, otp).catch((err) => console.error("SEND PASSWORD OTP EMAIL ERROR:", err.message));
+    const result = await sendOtp(user.email, otp);
+    if (!result.sent && !result.dev) {
+      console.error("SEND PASSWORD OTP EMAIL FAILED:", result.error);
+      return res.status(502).json({
+        error: "Could not send the OTP email right now. Please try again later.",
+      });
+    }
     res.json({ message: "An OTP has been sent to your email." });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -261,12 +261,14 @@ npm run seed:admin          # Creates/updates admin from ADMIN_* env vars
 | `SMTP_PORT` | SMTP port (default: 587) |
 | `SMTP_USER` | SMTP username |
 | `SMTP_PASS` | SMTP password |
-| `MAIL_FROM` | From address for OTP emails |
+| `MAIL_FROM` | From address for OTP emails (must be a verified Brevo sender when using the API) |
+| `MAIL_FROM_NAME` | Display name for OTP emails (default: `CivicVoice`) |
+| `BREVO_API_KEY` | Brevo API key — required on Render, where outbound SMTP ports are blocked |
 | `ADMIN_NAME` | Admin bootstrap name (`npm run seed:admin`) |
 | `ADMIN_EMAIL` | Admin bootstrap email |
 | `ADMIN_PASSWORD` | Admin bootstrap password |
 
-If SMTP is not configured, OTPs are printed to the server console (dev mode). If ImageKit is not configured, images are stored under `backend/uploads` and served at `/uploads`.
+In development, SMTP is tried first and OTPs are printed to the server console if no email provider works. In production the Brevo HTTP API is used first because Render blocks outbound SMTP ports, so set `BREVO_API_KEY` and a verified `MAIL_FROM` there. If ImageKit is not configured, images are stored under `backend/uploads` and served at `/uploads`.
 
 ## How It Works
 
