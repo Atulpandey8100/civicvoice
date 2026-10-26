@@ -146,7 +146,7 @@ export default function IssueCard({ issue, onVote }) {
 
           <Link
             to={`/issues/${issue._id}`}
-            className="flex items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-semibold text-white transition-transform hover:scale-105"
+            className="btn btn-sm btn-primary rounded-full gap-1.5 px-3.5 py-1.5 text-xs hover:scale-105"
           >
             {issue.aiSuggestions?.length > 0 ? (
               <>
