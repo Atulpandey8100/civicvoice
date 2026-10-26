@@ -499,7 +499,7 @@ router.put(
         }
       }
 
-      Object.assign(issue, allowedUpdates);
+      issue.set(allowedUpdates);
 
       await issue.save();
 

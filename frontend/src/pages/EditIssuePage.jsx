@@ -62,7 +62,9 @@ export default function EditIssuePage() {
   }, [id, user]);
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.files);
+    const files = Array.from(e.target.files);
+    // Allow picking the same file again after removing it.
+    e.target.value = '';
     if (files.length + existingImages.length + newImages.length > 5) {
       toast({ variant: 'error', title: 'Too many images', description: 'Maximum 5 images allowed.' });
       return;
